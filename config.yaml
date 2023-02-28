@@ -2,7 +2,7 @@
 # See LICENSE file for licensing details.
 
 options:
-  external-hostname:
+  external_hostname:
     description: |
       The external hostname to use. Will default to the name of the deployed
       application.

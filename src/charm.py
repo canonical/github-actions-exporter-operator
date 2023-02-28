@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
-# Copyright 2023 Amanda
+
+# Copyright 2023 Canonical Ltd.
 # See LICENSE file for licensing details.
-#
-# Learn more at: https://juju.is/docs/sdk
 
 """Charm for GitHub Actions Exporter on kubernetes."""
 
@@ -90,12 +89,12 @@ class GithubActionsExporterOperatorCharm(CharmBase):
             rel = self.model.relations["ingress"][0].data[self.app]
             if self._has_required_fields(rel):
                 return {
-                    SVC_HOSTNAME: rel[SVC_HOSTNAME],
+                    SVC_HOSTNAME: self.config["external_hostname"] or self.app.name,
                     SVC_NAME: rel[SVC_NAME],
                     SVC_PORT: rel[SVC_PORT],
                 }
         return {
-            SVC_HOSTNAME: self.config["external-hostname"] or self.app.name,
+            SVC_HOSTNAME: self.config["external_hostname"] or self.app.name,
             SVC_NAME: self.app.name,
             SVC_PORT: GH_EXPORTER_PORT,
         }
@@ -155,9 +154,9 @@ class GithubActionsExporterOperatorCharm(CharmBase):
                 self.unit.status = ActiveStatus()
             else:
                 event.defer()
-                self.unit.status = WaitingStatus("waiting for Pebble API.")
+                self.unit.status = WaitingStatus("Waiting for pebble")
         else:
-            self.model.unit.status = BlockedStatus("Configuration is not valid.")
+            self.model.unit.status = BlockedStatus("Configuration is not valid")
             event.defer()
             return
 
