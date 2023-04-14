@@ -184,7 +184,7 @@ class GithubActionsExporterOperatorCharm(CharmBase):
                     "summary": "github-actions-exporter",
                     "startup": "enabled",
                     "user": "gh_exporter",
-                    "command": "/usr/local/bin/github-actions-exporter",
+                    "command": "/srv/gh_exporter/github-actions-exporter",
                     "environment": {
                         "GITHUB_WEBHOOK_TOKEN": f"{self._get_github_webhook_token()}",
                         "GITHUB_API_TOKEN": f"{self.model.config['github_api_token']}",
