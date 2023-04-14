@@ -1,0 +1,22 @@
+# Copyright 2022 Canonical Ltd.
+# See LICENSE file for licensing details.
+
+options:
+  external_hostname:
+    description: |
+      The external hostname to use. Will default to the name of the deployed
+      application.
+    default: ""
+    type: string
+  github_webhook_token:
+    type: string
+    description: GitHub Webhook Token
+    default: 'default'
+  github_api_token:
+    type: string
+    description: GitHub Webhook API Token
+    default: 'default'
+  github_org:
+    type: string
+    description: GitHub Organization
+    default: 'default'
