@@ -131,7 +131,7 @@ class GithubActionsExporterOperatorCharm(CharmBase):
         """
         container = self.unit.get_container("github-actions-exporter")
         process = container.exec(
-            ["/usr/local/bin/github-actions-exporter", "--version"], user="gh_exporter"
+            ["/srv/gh_exporter/github-actions-exporter", "--version"], user="gh_exporter"
         )
         version_string, _ = process.wait_output()
         version = findall("[0-9a-f]{5,40}", version_string)
@@ -160,21 +160,10 @@ class GithubActionsExporterOperatorCharm(CharmBase):
             event.defer()
             return
 
-    def _get_github_webhook_token(self) -> str:
-        """Return fake webhook token (to be improved).
-
-        Returns:
-            The token configured or fake one
-        """
-        cfg_token = self.model.config["github_webhook_token"]
-        if not cfg_token:
-            return "fake"
-        return cfg_token
-
     @property
     def _pebble_layer(self) -> Dict:
         """Return a dictionary representing a Pebble layer."""
-        logger.info("using %s", self._get_github_webhook_token())
+        logger.info("using %s", self.model.config["github_webhook_token"])
         return {
             "summary": "GitHub Actions Exporter layer",
             "description": "pebble config layer for GitHub Actions Exporter",
@@ -186,7 +175,7 @@ class GithubActionsExporterOperatorCharm(CharmBase):
                     "user": "gh_exporter",
                     "command": "/srv/gh_exporter/github-actions-exporter",
                     "environment": {
-                        "GITHUB_WEBHOOK_TOKEN": f"{self._get_github_webhook_token()}",
+                        "GITHUB_WEBHOOK_TOKEN": f"{self.model.config['github_webhook_token']}",
                         "GITHUB_API_TOKEN": f"{self.model.config['github_api_token']}",
                         "GITHUB_ORG": f"{self.model.config['github_org']}",
                     },

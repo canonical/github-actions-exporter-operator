@@ -5,6 +5,7 @@
 
 import typing
 import unittest
+from secrets import token_hex
 from unittest.mock import MagicMock, patch
 
 from ops.model import ActiveStatus, BlockedStatus, Container, WaitingStatus
@@ -39,7 +40,7 @@ class TestCharm(unittest.TestCase):
         self.assertEqual("foo", updated_plan_env["GITHUB_WEBHOOK_TOKEN"])
         self.assertEqual(self.harness.model.unit.status, ActiveStatus())
         mock_container_exec.assert_any_call(
-            ["/usr/local/bin/github-actions-exporter", "--version"],
+            ["/srv/gh_exporter/github-actions-exporter", "--version"],
             user="gh_exporter",
         )
 
@@ -84,6 +85,39 @@ class TestCharm(unittest.TestCase):
         self.assertEqual("default", updated_plan_env["GITHUB_WEBHOOK_TOKEN"])
         self.assertEqual("default", updated_plan_env["GITHUB_API_TOKEN"])
         self.assertEqual("default", updated_plan_env["GITHUB_ORG"])
+
+    @patch.object(Container, "exec")
+    def test_valid_webhook_token(self, mock_container_exec):
+        """
+        arrange: charm created
+        act: set container as ready and change the configuration
+        assert: webhook token will be equal to the one that was set
+        """
+        mock_container_exec.return_value = MagicMock(
+            wait_output=MagicMock(return_value=("", None))
+        )
+        self.harness.container_pebble_ready("github-actions-exporter")
+        new_webhook_token = token_hex(16)
+        self.harness.update_config({"github_webhook_token": new_webhook_token})
+        updated_plan = self.harness.get_container_pebble_plan("github-actions-exporter").to_dict()
+        updated_plan_env = updated_plan["services"]["github-actions-exporter"]["environment"]
+        self.assertEqual(new_webhook_token, updated_plan_env["GITHUB_WEBHOOK_TOKEN"])
+
+    @patch.object(Container, "exec")
+    def test_empty_webhook_token(self, mock_container_exec):
+        """
+        arrange: charm created
+        act: set container as ready and change the configuration
+        assert: webhook token will be equal to the one that was set
+        """
+        mock_container_exec.return_value = MagicMock(
+            wait_output=MagicMock(return_value=("", None))
+        )
+        self.harness.container_pebble_ready("github-actions-exporter")
+        self.harness.update_config({"github_webhook_token": ""})
+        updated_plan = self.harness.get_container_pebble_plan("github-actions-exporter").to_dict()
+        updated_plan_env = updated_plan["services"]["github-actions-exporter"]["environment"]
+        self.assertEqual("default", updated_plan_env["GITHUB_WEBHOOK_TOKEN"])
 
     @patch.object(Container, "exec")
     def test_github_actions_exporter_pebble_ready(self, mock_container_exec):
@@ -143,6 +177,6 @@ class TestCharm(unittest.TestCase):
         }
         self.assertEqual(self.harness.model.unit.status, ActiveStatus())
         mock_container_exec.assert_any_call(
-            ["/usr/local/bin/github-actions-exporter", "--version"],
+            ["/srv/gh_exporter/github-actions-exporter", "--version"],
             user="gh_exporter",
         )
