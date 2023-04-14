@@ -8,16 +8,25 @@ license: Apache-2.0
 platforms:
   amd64:
 parts:
-  gh_exporter:
+  add-user:
     plugin: nil
+    overlay-script: |
+      mkdir $CRAFT_OVERLAY/etc
+      chmod 755 $CRAFT_OVERLAY/etc
+      groupadd -R $CRAFT_OVERLAY --gid 2000 gh_exporter
+      useradd -R $CRAFT_OVERLAY --system --gid 2000 --uid 2000 --home /srv/gh_exporter/ gh_exporter
+  gh_exporter:
+    plugin: go
     source: https://github.com/cpanato/github_actions_exporter
     source-type: git
-    build-packages:
-      - build-essential
+    build-snaps:
+      - go
+    stage-packages:
       - ca-certificates
-      - golang
     override-build: |
       make build
-      mkdir /srv/gh_exporter/
-      cp github-actions-exporter /srv/gh_exporter/
-      chmod 755 /srv/gh_exporter/github-actions-exporter
+      /bin/bash -c "chown 2000:2000 github-actions-exporter"
+      /bin/bash -c "chmod 755 github-actions-exporter"
+      cp github-actions-exporter ${CRAFT_PART_INSTALL}
+    organize:
+      github-actions-exporter: srv/gh_exporter/github-actions-exporter
