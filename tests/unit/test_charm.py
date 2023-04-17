@@ -11,7 +11,7 @@ from unittest.mock import MagicMock, patch
 from ops.model import ActiveStatus, BlockedStatus, Container, WaitingStatus
 from ops.testing import Harness
 
-from charm import GithubActionsExporterOperatorCharm
+from charm import GH_EXPORTER_WEBHOOK_PORT, GithubActionsExporterOperatorCharm
 
 
 class TestCharm(unittest.TestCase):
@@ -153,11 +153,11 @@ class TestCharm(unittest.TestCase):
         assert charm.ingress.config_dict == {
             "host": "github-actions-exporter-operator",
             "name": "github-actions-exporter-operator",
-            "port": 9101,
+            "port": GH_EXPORTER_WEBHOOK_PORT,
             "service-hostname": charm.app.name,
             "service-name": "github-actions-exporter-operator",
             "service-namespace": None,
-            "service-port": 9101,
+            "service-port": GH_EXPORTER_WEBHOOK_PORT,
         }
         mock_container_exec.return_value = MagicMock(
             wait_output=MagicMock(return_value=("", None))
@@ -170,10 +170,10 @@ class TestCharm(unittest.TestCase):
         assert charm.ingress.config_dict == {
             "host": "foo",
             "name": "github-actions-exporter-operator",
-            "port": 9101,
+            "port": GH_EXPORTER_WEBHOOK_PORT,
             "service-hostname": "foo",
             "service-name": "github-actions-exporter-operator",
-            "service-port": 9101,
+            "service-port": GH_EXPORTER_WEBHOOK_PORT,
         }
         self.assertEqual(self.harness.model.unit.status, ActiveStatus())
         mock_container_exec.assert_any_call(

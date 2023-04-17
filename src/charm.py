@@ -17,7 +17,8 @@ from ops.model import ActiveStatus, BlockedStatus, MaintenanceStatus, WaitingSta
 
 logger = logging.getLogger(__name__)
 
-GH_EXPORTER_PORT = 9101
+GH_EXPORTER_METRICS_PORT = 9101
+GH_EXPORTER_WEBHOOK_PORT = 8065
 SVC_HOSTNAME = "service-hostname"
 SVC_NAME = "service-name"
 SVC_PORT = "service-port"
@@ -45,7 +46,7 @@ class GithubActionsExporterOperatorCharm(CharmBase):
                     "static_configs": [
                         {
                             "targets": [
-                                f"*:{GH_EXPORTER_PORT}",
+                                f"*:{GH_EXPORTER_METRICS_PORT}",
                             ]
                         }
                     ]
@@ -96,7 +97,7 @@ class GithubActionsExporterOperatorCharm(CharmBase):
         return {
             SVC_HOSTNAME: self.config["external_hostname"] or self.app.name,
             SVC_NAME: self.app.name,
-            SVC_PORT: GH_EXPORTER_PORT,
+            SVC_PORT: GH_EXPORTER_WEBHOOK_PORT,
         }
 
     def _on_github_actions_exporter_pebble_ready(self, event: WorkloadEvent):
@@ -185,7 +186,7 @@ class GithubActionsExporterOperatorCharm(CharmBase):
                 "github-actions-exporter-ready": {
                     "override": "replace",
                     "level": "ready",
-                    "tcp": {"port": GH_EXPORTER_PORT},
+                    "tcp": {"port": GH_EXPORTER_WEBHOOK_PORT},
                 }
             },
         }

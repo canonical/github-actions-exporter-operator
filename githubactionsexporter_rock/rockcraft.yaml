@@ -19,6 +19,7 @@ parts:
     plugin: go
     source: https://github.com/cpanato/github_actions_exporter
     source-type: git
+    source-branch: main
     build-snaps:
       - go
     stage-packages:
