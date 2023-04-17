@@ -13,6 +13,8 @@ from ops.testing import Harness
 
 from charm import GH_EXPORTER_WEBHOOK_PORT, GithubActionsExporterOperatorCharm
 
+TEST_MODEL_NAME = "test-github-actions-exporter"
+
 
 class TestCharm(unittest.TestCase):
     """GitHub Actions Exporter charm unit tests."""
@@ -21,6 +23,7 @@ class TestCharm(unittest.TestCase):
         """Set up test environment."""
         self.harness = Harness(GithubActionsExporterOperatorCharm)
         self.addCleanup(self.harness.cleanup)
+        self.harness.set_model_name(TEST_MODEL_NAME)
         self.harness.begin()
 
     @patch.object(Container, "exec")
@@ -136,8 +139,7 @@ class TestCharm(unittest.TestCase):
         self.assertTrue(service.is_running())
         self.assertEqual(self.harness.model.unit.status, ActiveStatus())
 
-    @patch.object(Container, "exec")
-    def test_ingress(self, mock_container_exec):
+    def test_ingress(self):
         """
         arrange: charm created
         act: create a relation between github-actions-exporter-k8s and nginx ingress integrator,
@@ -145,38 +147,31 @@ class TestCharm(unittest.TestCase):
         assert: ingress relation data should be set up according to the configuration
             and application name
         """
-        ingress_relation_id = self.harness.add_relation("ingress", "ingress")
-        self.harness.add_relation_unit(ingress_relation_id, "ingress/0")
+        harness = self.harness
+        nginx_route_relation_id = harness.add_relation("nginx-route", "ingress")
+        harness.add_relation_unit(nginx_route_relation_id, "ingress/0")
         charm: GithubActionsExporterOperatorCharm = typing.cast(
             GithubActionsExporterOperatorCharm, self.harness.charm
         )
-        assert charm.ingress.config_dict == {
-            "host": "github-actions-exporter-operator",
-            "name": "github-actions-exporter-operator",
-            "port": GH_EXPORTER_WEBHOOK_PORT,
+        harness.set_leader(True)
+        # Disabled to keep require nginx route as protected
+        charm._require_nginx_route()  # pylint:disable=protected-access
+
+        assert harness.get_relation_data(nginx_route_relation_id, charm.app) == {
+            "service-namespace": TEST_MODEL_NAME,
             "service-hostname": charm.app.name,
-            "service-name": "github-actions-exporter-operator",
-            "service-namespace": None,
-            "service-port": GH_EXPORTER_WEBHOOK_PORT,
+            "service-name": charm.app.name,
+            "service-port": str(GH_EXPORTER_WEBHOOK_PORT),
         }
-        mock_container_exec.return_value = MagicMock(
-            wait_output=MagicMock(return_value=("", None))
-        )
-        self.harness.container_pebble_ready("github-actions-exporter")
-        self.harness.set_leader(
-            True
-        )  # this is needed otherwise the ingress will not update the config
-        self.harness.update_config({"external_hostname": "foo"})
-        assert charm.ingress.config_dict == {
-            "host": "foo",
-            "name": "github-actions-exporter-operator",
-            "port": GH_EXPORTER_WEBHOOK_PORT,
-            "service-hostname": "foo",
-            "service-name": "github-actions-exporter-operator",
-            "service-port": GH_EXPORTER_WEBHOOK_PORT,
+
+        new_hostname = token_hex(16)
+        harness.update_config({"external_hostname": new_hostname})
+        # Disabled to keep require nginx route as protected
+        charm._require_nginx_route()  # pylint:disable=protected-access
+
+        assert harness.get_relation_data(nginx_route_relation_id, charm.app) == {
+            "service-namespace": TEST_MODEL_NAME,
+            "service-hostname": new_hostname,
+            "service-name": charm.app.name,
+            "service-port": str(GH_EXPORTER_WEBHOOK_PORT),
         }
-        self.assertEqual(self.harness.model.unit.status, ActiveStatus())
-        mock_container_exec.assert_any_call(
-            ["/srv/gh_exporter/github-actions-exporter", "--version"],
-            user="gh_exporter",
-        )

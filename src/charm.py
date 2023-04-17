@@ -9,7 +9,7 @@ import logging
 from re import findall
 from typing import Dict
 
-from charms.nginx_ingress_integrator.v0.ingress import IngressRequires
+from charms.nginx_ingress_integrator.v0.nginx_route import require_nginx_route
 from charms.prometheus_k8s.v0.prometheus_scrape import MetricsEndpointProvider
 from ops.charm import CharmBase, HookEvent, WorkloadEvent
 from ops.main import main
@@ -35,10 +35,7 @@ class GithubActionsExporterOperatorCharm(CharmBase):
             self._on_github_actions_exporter_pebble_ready,
         )
         self.framework.observe(self.on.config_changed, self._on_config_changed)
-        self.ingress = IngressRequires(
-            self,
-            self.ingress_config(),
-        )
+        self._require_nginx_route()
         self._metrics_endpoint = MetricsEndpointProvider(
             self,
             jobs=[
@@ -52,6 +49,26 @@ class GithubActionsExporterOperatorCharm(CharmBase):
                     ]
                 }
             ],
+        )
+
+    def _require_nginx_route(self):
+        """Set require_nginx_route."""
+        service_hostname = self.config["external_hostname"] or self.app.name
+        service_name = self.app.name
+        service_port = GH_EXPORTER_WEBHOOK_PORT
+
+        if self._has_nginx_route_relation() and self._has_app_data():
+            rel = self.model.relations["nginx-route"][0].data[self.app]
+            if self._has_required_fields(rel):
+                service_hostname = self.config["external_hostname"] or self.app.name
+                service_name = rel[SVC_NAME]
+                service_port = rel[SVC_PORT]
+
+        require_nginx_route(
+            charm=self,
+            service_hostname=service_hostname,
+            service_name=service_name,
+            service_port=service_port,
         )
 
     def _has_required_fields(self, rel: Dict) -> bool:
@@ -70,35 +87,17 @@ class GithubActionsExporterOperatorCharm(CharmBase):
         Returns:
             Returns true if app data exist
         """
-        return self.app in self.model.relations["ingress"][0].data
+        return self.app in self.model.relations["nginx-route"][0].data
 
-    def _has_ingress_relation(self) -> bool:
-        """Check for ingress relation.
-
-        Returns:
-            Returns true if ingress relation exist
-        """
-        return "ingress" in self.model.relations and len(self.model.relations["ingress"]) > 0
-
-    def ingress_config(self) -> Dict:
-        """Get ingress config from relation or default.
+    def _has_nginx_route_relation(self) -> bool:
+        """Check for nginx-route relation.
 
         Returns:
-            The ingress config to be used
+            Returns true if nginx-route relation exist
         """
-        if self._has_ingress_relation() and self._has_app_data():
-            rel = self.model.relations["ingress"][0].data[self.app]
-            if self._has_required_fields(rel):
-                return {
-                    SVC_HOSTNAME: self.config["external_hostname"] or self.app.name,
-                    SVC_NAME: rel[SVC_NAME],
-                    SVC_PORT: rel[SVC_PORT],
-                }
-        return {
-            SVC_HOSTNAME: self.config["external_hostname"] or self.app.name,
-            SVC_NAME: self.app.name,
-            SVC_PORT: GH_EXPORTER_WEBHOOK_PORT,
-        }
+        return (
+            "nginx-route" in self.model.relations and len(self.model.relations["nginx-route"]) > 0
+        )
 
     def _on_github_actions_exporter_pebble_ready(self, event: WorkloadEvent):
         """Define and start a workload using the Pebble API.
@@ -151,7 +150,6 @@ class GithubActionsExporterOperatorCharm(CharmBase):
                 self.model.unit.status = MaintenanceStatus("Configuring pod")
                 container.add_layer("github-actions-exporter", self._pebble_layer, combine=True)
                 container.replan()
-                self.ingress.update_config(self.ingress_config())
                 self.unit.status = ActiveStatus()
             else:
                 event.defer()

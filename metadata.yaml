@@ -23,6 +23,6 @@ provides:
     interface: prometheus_scrape
 
 requires:
-  ingress:
-    interface: ingress
+  nginx-route:
+    interface: nginx-route
     limit: 1
