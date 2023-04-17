@@ -42,14 +42,11 @@ async def app(
     )
 
     resources = {
-        "github-actions-exporter-image": pytestconfig.getoption("--github-actions-exporter-image"),
+        "github-actions-exporter-image": pytestconfig.getoption("--githubactionsexporter-image"),
     }
     charm = await ops_test.build_charm(".")
     application = await ops_test.model.deploy(
-        charm,
-        resources=resources,
-        application_name=app_name,
-        series="focal"
+        charm, resources=resources, application_name=app_name, series="focal"
     )
 
     await dependencies
