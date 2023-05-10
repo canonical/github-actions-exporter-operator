@@ -1,11 +1,12 @@
 name: github-actions-exporter-operator
 display-name: GitHub Actions Exporter
 summary: GitHub Actions Exporter
+description: Collects metrics from GitHub Actions.
 docs: https://discourse.charmhub.io/
+issues: https://github.com/canonical/github-actions-exporter-operator/issues
 maintainers:
   - launchpad.net/~canonical-is-devops
-issues: https://github.com/canonical/github-actions-exporter-operator/issues
-description: Collects metrics from GitHub Actions.
+source: https://github.com/canonical/github-actions-exporter-operator
 assumes:
   - k8s-api
 containers:
