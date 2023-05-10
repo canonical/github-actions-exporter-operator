@@ -1,3 +1,5 @@
+# Copyright 2023 Canonical Ltd.
+# See LICENSE file for licensing details.
 name: githubactionsexporter
 summary: githubactionsexporter rock
 description: GitHub Actions Exporter OCI image for the GitHub Actions Exporter charm
