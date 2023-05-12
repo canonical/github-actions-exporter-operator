@@ -147,26 +147,23 @@ class GithubActionsExporterOperatorCharm(CharmBase):
         Args:
             event: Event triggering after config is changed.
         """
-        if self._is_configuration_valid():
-            container = self.unit.get_container("github-actions-exporter")
-            if container.can_connect():
-                logger.info("Configuration has changed")
-                self.model.unit.status = MaintenanceStatus("Configuring pod")
-                container.add_layer("github-actions-exporter", self._pebble_layer, combine=True)
-                container.replan()
-                self.unit.status = ActiveStatus()
-            else:
-                event.defer()
-                self.unit.status = WaitingStatus("Waiting for pebble")
-        else:
+        if not self._is_configuration_valid():
             self.model.unit.status = BlockedStatus("Configuration is not valid")
             event.defer()
             return
+        container = self.unit.get_container("github-actions-exporter")
+        if not container.can_connect():
+            event.defer()
+            self.unit.status = WaitingStatus("Waiting for pebble")
+            return
+        self.model.unit.status = MaintenanceStatus("Configuring pod")
+        container.add_layer("github-actions-exporter", self._pebble_layer, combine=True)
+        container.replan()
+        self.unit.status = ActiveStatus()
 
     @property
     def _pebble_layer(self) -> Dict:
         """Return a dictionary representing a Pebble layer."""
-        logger.info("using %s", self.state.github_webhook_token)
         return {
             "summary": "GitHub Actions Exporter layer",
             "description": "pebble config layer for GitHub Actions Exporter",

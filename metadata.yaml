@@ -4,7 +4,6 @@ name: github-actions-exporter
 display-name: GitHub Actions Exporter
 summary: GitHub Actions Exporter
 description: Collects metrics from GitHub Actions.
-docs: https://discourse.charmhub.io/
 issues: https://github.com/canonical/github-actions-exporter-operator/issues
 maintainers:
   - launchpad.net/~canonical-is-devops
@@ -19,7 +18,6 @@ resources:
   github-actions-exporter-image:
     type: oci-image
     description: Docker image for GitHub Actions Exporter
-    auto-fetch: true
 
 provides:
   metrics-endpoint:

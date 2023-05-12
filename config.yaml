@@ -10,11 +10,11 @@ options:
     type: string
   github_webhook_token:
     type: string
-    description: GitHub Webhook Token
+    description: The secret token defined while creating the Webhook
     default: 'default'
   github_api_token:
     type: string
-    description: GitHub Webhook API Token
+    description: The GitHub API Access Token to collect the Action Billing metrics
     default: 'default'
   github_org:
     type: string
