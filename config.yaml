@@ -10,13 +10,16 @@ options:
     type: string
   github_webhook_token:
     type: string
-    description: The secret token defined while creating the Webhook
+    description: The secret token defined while creating the Webhook.
     default: 'default'
   github_api_token:
     type: string
-    description: The GitHub API Access Token used to collect the Action Billing metrics
+    description: |
+      The GitHub API Access Token used to collect the Action Billing metrics.
     default: 'default'
   github_org:
     type: string
-    description: GitHub Organization to collect the Action Billing metrics from
+    description: |
+      GitHub Organization from which the Action Billing metrics will be
+      collected.
     default: 'default'
