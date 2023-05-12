@@ -14,9 +14,9 @@ options:
     default: 'default'
   github_api_token:
     type: string
-    description: The GitHub API Access Token to collect the Action Billing metrics
+    description: The GitHub API Access Token used to collect the Action Billing metrics
     default: 'default'
   github_org:
     type: string
-    description: GitHub Organization
+    description: GitHub Organization to collect the Action Billing metrics from
     default: 'default'
