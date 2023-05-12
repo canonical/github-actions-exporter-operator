@@ -11,7 +11,8 @@ from unittest.mock import MagicMock, patch
 from ops.model import ActiveStatus, BlockedStatus, Container, WaitingStatus
 from ops.testing import Harness
 
-from charm import GH_EXPORTER_WEBHOOK_PORT, GithubActionsExporterOperatorCharm
+from charm import GithubActionsExporterOperatorCharm
+from ingress import GH_EXPORTER_WEBHOOK_PORT, set_nginx_route
 
 TEST_MODEL_NAME = "test-github-actions-exporter"
 
@@ -155,7 +156,7 @@ class TestCharm(unittest.TestCase):
         )
         harness.set_leader(True)
         # Disabled to keep require nginx route as protected
-        charm._require_nginx_route()  # pylint:disable=protected-access
+        set_nginx_route(charm, charm.state)
 
         assert harness.get_relation_data(nginx_route_relation_id, charm.app) == {
             "service-namespace": TEST_MODEL_NAME,
@@ -167,7 +168,7 @@ class TestCharm(unittest.TestCase):
         new_hostname = token_hex(16)
         harness.update_config({"external_hostname": new_hostname})
         # Disabled to keep require nginx route as protected
-        charm._require_nginx_route()  # pylint:disable=protected-access
+        set_nginx_route(charm, charm.state)
 
         assert harness.get_relation_data(nginx_route_relation_id, charm.app) == {
             "service-namespace": TEST_MODEL_NAME,

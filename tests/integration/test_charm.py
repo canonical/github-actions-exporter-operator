@@ -10,7 +10,7 @@ import requests
 from ops.model import ActiveStatus, Application
 from pytest_operator.plugin import OpsTest
 
-from charm import GH_EXPORTER_WEBHOOK_PORT
+from ingress import GH_EXPORTER_WEBHOOK_PORT
 
 logger = logging.getLogger()
 

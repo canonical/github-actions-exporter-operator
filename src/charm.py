@@ -6,25 +6,21 @@
 """Charm for GitHub Actions Exporter on kubernetes."""
 
 import logging
-from re import findall
 from typing import Dict
 
-from charms.nginx_ingress_integrator.v0.nginx_route import require_nginx_route
 from charms.prometheus_k8s.v0.prometheus_scrape import MetricsEndpointProvider
 from ops.charm import CharmBase, HookEvent, WorkloadEvent
 from ops.main import main
 from ops.model import ActiveStatus, BlockedStatus, MaintenanceStatus, WaitingStatus
 
+from github_actions_exporter import GitHubActionsExporter
+from ingress import set_nginx_route
 from state import State
 from types_ import CharmState
 
 logger = logging.getLogger(__name__)
 
 GH_EXPORTER_METRICS_PORT = 9101
-GH_EXPORTER_WEBHOOK_PORT = 8065
-SVC_HOSTNAME = "service-hostname"
-SVC_NAME = "service-name"
-SVC_PORT = "service-port"
 
 
 class GithubActionsExporterOperatorCharm(CharmBase):
@@ -39,7 +35,7 @@ class GithubActionsExporterOperatorCharm(CharmBase):
         )
         self.framework.observe(self.on.config_changed, self._on_config_changed)
         self.state: CharmState = State(self)
-        self._require_nginx_route()
+        set_nginx_route(self, self.state)
         self._metrics_endpoint = MetricsEndpointProvider(
             self,
             jobs=[
@@ -55,53 +51,14 @@ class GithubActionsExporterOperatorCharm(CharmBase):
             ],
         )
 
-    def _require_nginx_route(self):
-        """Set require_nginx_route."""
-        service_hostname = self.state.external_hostname or self.app.name
-        service_name = self.app.name
-        service_port = GH_EXPORTER_WEBHOOK_PORT
-
-        if self._has_nginx_route_relation() and self._has_app_data():
-            rel = self.model.relations["nginx-route"][0].data[self.app]
-            if self._has_required_fields(rel):
-                service_hostname = self.state.external_hostname or self.app.name
-                service_name = rel[SVC_NAME]
-                service_port = rel[SVC_PORT]
-
-        require_nginx_route(
-            charm=self,
-            service_hostname=service_hostname,
-            service_name=service_name,
-            service_port=service_port,
-        )
-
-    def _has_required_fields(self, rel: Dict) -> bool:
-        """Check for required fields in relation.
-
-        Args:
-            rel: relation to check
-        Returns:
-            Returns true if all fields exist
-        """
-        return all(key in rel for key in (SVC_HOSTNAME, SVC_NAME, SVC_PORT))
-
-    def _has_app_data(self) -> bool:
-        """Check for app in relation data.
+    @property
+    def _github_actions_exporter(self) -> GitHubActionsExporter:
+        """Returns an instance of the GitHub Actions Exporter object.
 
         Returns:
-            Returns true if app data exist
+            Instance of GitHub Actions Exporter
         """
-        return self.app in self.model.relations["nginx-route"][0].data
-
-    def _has_nginx_route_relation(self) -> bool:
-        """Check for nginx-route relation.
-
-        Returns:
-            Returns true if nginx-route relation exist
-        """
-        return (
-            "nginx-route" in self.model.relations and len(self.model.relations["nginx-route"]) > 0
-        )
+        return GitHubActionsExporter(self)
 
     def _on_github_actions_exporter_pebble_ready(self, event: WorkloadEvent):
         """Define and start a workload using the Pebble API.
@@ -114,7 +71,7 @@ class GithubActionsExporterOperatorCharm(CharmBase):
         container.add_layer(container.name, self._pebble_layer, combine=True)
         container.replan()
         self.unit.status = ActiveStatus()
-        self.unit.set_workload_version(self._get_exporter_version())
+        self.unit.set_workload_version(self._github_actions_exporter.get_exporter_version())
 
     def _is_configuration_valid(self) -> bool:
         """Check if there is no empty configuration.
@@ -126,20 +83,6 @@ class GithubActionsExporterOperatorCharm(CharmBase):
         github_api_token = self.state.github_api_token
         github_org = self.state.github_org
         return all([github_webhook_token, github_api_token, github_org])
-
-    def _get_exporter_version(self) -> str:
-        """Retrieve the current version of GitHub Actions Exporter.
-
-        Returns:
-            The  GitHub Actions Exporter version installed.
-        """
-        container = self.unit.get_container("github-actions-exporter")
-        process = container.exec(
-            ["/srv/gh_exporter/github-actions-exporter", "--version"], user="gh_exporter"
-        )
-        version_string, _ = process.wait_output()
-        version = findall("[0-9a-f]{5,40}", version_string)
-        return version[0][0:7] if version else ""
 
     def _on_config_changed(self, event: HookEvent) -> None:
         """Handle changed configuration.
