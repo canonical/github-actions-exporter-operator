@@ -6,6 +6,7 @@
 
 from re import findall
 
+
 # There is only one method for this class.
 class GitHubActionsExporter:  # pylint: disable=too-few-public-methods
     """This class handles interactions with GitHub Actions Exporter."""
