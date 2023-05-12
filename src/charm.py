@@ -15,6 +15,9 @@ from ops.charm import CharmBase, HookEvent, WorkloadEvent
 from ops.main import main
 from ops.model import ActiveStatus, BlockedStatus, MaintenanceStatus, WaitingStatus
 
+from state import State
+from types_ import CharmState
+
 logger = logging.getLogger(__name__)
 
 GH_EXPORTER_METRICS_PORT = 9101
@@ -35,6 +38,7 @@ class GithubActionsExporterOperatorCharm(CharmBase):
             self._on_github_actions_exporter_pebble_ready,
         )
         self.framework.observe(self.on.config_changed, self._on_config_changed)
+        self.state: CharmState = State(self)
         self._require_nginx_route()
         self._metrics_endpoint = MetricsEndpointProvider(
             self,
@@ -53,14 +57,14 @@ class GithubActionsExporterOperatorCharm(CharmBase):
 
     def _require_nginx_route(self):
         """Set require_nginx_route."""
-        service_hostname = self.config["external_hostname"] or self.app.name
+        service_hostname = self.state.external_hostname or self.app.name
         service_name = self.app.name
         service_port = GH_EXPORTER_WEBHOOK_PORT
 
         if self._has_nginx_route_relation() and self._has_app_data():
             rel = self.model.relations["nginx-route"][0].data[self.app]
             if self._has_required_fields(rel):
-                service_hostname = self.config["external_hostname"] or self.app.name
+                service_hostname = self.state.external_hostname or self.app.name
                 service_name = rel[SVC_NAME]
                 service_port = rel[SVC_PORT]
 
@@ -118,9 +122,9 @@ class GithubActionsExporterOperatorCharm(CharmBase):
         Returns:
             True if they are all set
         """
-        github_webhook_token = self.model.config["github_webhook_token"]
-        github_api_token = self.model.config["github_api_token"]
-        github_org = self.model.config["github_org"]
+        github_webhook_token = self.state.github_webhook_token
+        github_api_token = self.state.github_api_token
+        github_org = self.state.github_org
         return all([github_webhook_token, github_api_token, github_org])
 
     def _get_exporter_version(self) -> str:
@@ -162,7 +166,7 @@ class GithubActionsExporterOperatorCharm(CharmBase):
     @property
     def _pebble_layer(self) -> Dict:
         """Return a dictionary representing a Pebble layer."""
-        logger.info("using %s", self.model.config["github_webhook_token"])
+        logger.info("using %s", self.state.github_webhook_token)
         return {
             "summary": "GitHub Actions Exporter layer",
             "description": "pebble config layer for GitHub Actions Exporter",
@@ -174,9 +178,9 @@ class GithubActionsExporterOperatorCharm(CharmBase):
                     "user": "gh_exporter",
                     "command": "/srv/gh_exporter/github-actions-exporter",
                     "environment": {
-                        "GITHUB_WEBHOOK_TOKEN": f"{self.model.config['github_webhook_token']}",
-                        "GITHUB_API_TOKEN": f"{self.model.config['github_api_token']}",
-                        "GITHUB_ORG": f"{self.model.config['github_org']}",
+                        "GITHUB_WEBHOOK_TOKEN": f"{self.state.github_webhook_token}",
+                        "GITHUB_API_TOKEN": f"{self.state.github_api_token}",
+                        "GITHUB_ORG": f"{self.state.github_org}",
                     },
                 }
             },
@@ -184,7 +188,7 @@ class GithubActionsExporterOperatorCharm(CharmBase):
                 "github-actions-exporter-ready": {
                     "override": "replace",
                     "level": "ready",
-                    "tcp": {"port": GH_EXPORTER_WEBHOOK_PORT},
+                    "tcp": {"port": self.state.github_webhook_token},
                 }
             },
         }
