@@ -13,10 +13,10 @@ class GitHubActionsExporter:  # pylint: disable=too-few-public-methods
 
     def __init__(
         self,
-        charm,
+        container,
     ):
         """Construct."""
-        self._charm = charm
+        self._container = container
 
     def get_exporter_version(self) -> str:
         """Retrieve the current version of GitHub Actions Exporter.
@@ -24,8 +24,7 @@ class GitHubActionsExporter:  # pylint: disable=too-few-public-methods
         Returns:
             The  GitHub Actions Exporter version installed.
         """
-        container = self._charm.unit.get_container("github-actions-exporter")
-        process = container.exec(
+        process = self._container.exec(
             ["/srv/gh_exporter/github-actions-exporter", "--version"], user="gh_exporter"
         )
         version_string, _ = process.wait_output()

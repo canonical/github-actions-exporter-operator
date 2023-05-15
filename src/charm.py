@@ -58,7 +58,8 @@ class GithubActionsExporterOperatorCharm(CharmBase):
         Returns:
             Instance of GitHub Actions Exporter
         """
-        return GitHubActionsExporter(self)
+        container = self.unit.get_container("github-actions-exporter")
+        return GitHubActionsExporter(container)
 
     def _on_github_actions_exporter_pebble_ready(self, event: WorkloadEvent):
         """Define and start a workload using the Pebble API.
