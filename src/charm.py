@@ -9,18 +9,19 @@ import logging
 from typing import Dict
 
 from charms.prometheus_k8s.v0.prometheus_scrape import MetricsEndpointProvider
+from charms.traefik_k8s.v1.ingress import IngressPerAppRequirer
 from ops.charm import CharmBase, HookEvent, WorkloadEvent
 from ops.main import main
 from ops.model import ActiveStatus, BlockedStatus, MaintenanceStatus, WaitingStatus
 
 from github_actions_exporter import GitHubActionsExporter
-from ingress import set_nginx_route
 from state import State
 from types_ import CharmState
 
 logger = logging.getLogger(__name__)
 
 GH_EXPORTER_METRICS_PORT = 9101
+GH_EXPORTER_WEBHOOK_PORT = 8065
 
 
 class GithubActionsExporterOperatorCharm(CharmBase):
@@ -35,7 +36,15 @@ class GithubActionsExporterOperatorCharm(CharmBase):
         )
         self.framework.observe(self.on.config_changed, self._on_config_changed)
         self.state: CharmState = State(self)
-        set_nginx_route(self, self.state)
+        self.ingress = IngressPerAppRequirer(
+            self,
+            port=GH_EXPORTER_WEBHOOK_PORT,
+            # We're forced to use the app's service endpoint
+            # as the ingress per app interface currently always routes to the leader.
+            # https://github.com/canonical/traefik-k8s-operator/issues/159
+            host=f"{self.app.name}-endpoints.{self.model.name}.svc.cluster.local",
+            strip_prefix=True,
+        )
         self._metrics_endpoint = MetricsEndpointProvider(
             self,
             jobs=[

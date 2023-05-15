@@ -3,7 +3,6 @@
 
 """GitHub Actions Exporter charm unit tests."""
 
-import typing
 import unittest
 from secrets import token_hex
 from unittest.mock import MagicMock, patch
@@ -12,7 +11,6 @@ from ops.model import ActiveStatus, BlockedStatus, Container, WaitingStatus
 from ops.testing import Harness
 
 from charm import GithubActionsExporterOperatorCharm
-from ingress import GH_EXPORTER_WEBHOOK_PORT, set_nginx_route
 
 TEST_MODEL_NAME = "test-github-actions-exporter"
 
@@ -139,40 +137,3 @@ class TestCharm(unittest.TestCase):
         )
         self.assertTrue(service.is_running())
         self.assertEqual(self.harness.model.unit.status, ActiveStatus())
-
-    def test_ingress(self):
-        """
-        arrange: charm created
-        act: create a relation between github-actions-exporter-k8s and nginx ingress integrator,
-            and update the external-hostname configuration
-        assert: ingress relation data should be set up according to the configuration
-            and application name
-        """
-        harness = self.harness
-        nginx_route_relation_id = harness.add_relation("nginx-route", "ingress")
-        harness.add_relation_unit(nginx_route_relation_id, "ingress/0")
-        charm: GithubActionsExporterOperatorCharm = typing.cast(
-            GithubActionsExporterOperatorCharm, self.harness.charm
-        )
-        harness.set_leader(True)
-        # Disabled to keep require nginx route as protected
-        set_nginx_route(charm, charm.state)
-
-        assert harness.get_relation_data(nginx_route_relation_id, charm.app) == {
-            "service-namespace": TEST_MODEL_NAME,
-            "service-hostname": charm.app.name,
-            "service-name": charm.app.name,
-            "service-port": str(GH_EXPORTER_WEBHOOK_PORT),
-        }
-
-        new_hostname = token_hex(16)
-        harness.update_config({"external_hostname": new_hostname})
-        # Disabled to keep require nginx route as protected
-        set_nginx_route(charm, charm.state)
-
-        assert harness.get_relation_data(nginx_route_relation_id, charm.app) == {
-            "service-namespace": TEST_MODEL_NAME,
-            "service-hostname": new_hostname,
-            "service-name": charm.app.name,
-            "service-port": str(GH_EXPORTER_WEBHOOK_PORT),
-        }

@@ -10,7 +10,7 @@ import requests
 from ops.model import ActiveStatus, Application
 from pytest_operator.plugin import OpsTest
 
-from ingress import GH_EXPORTER_WEBHOOK_PORT
+from charm import GH_EXPORTER_WEBHOOK_PORT
 
 logger = logging.getLogger()
 
@@ -40,5 +40,28 @@ async def test_githubactionsexporter_is_up(ops_test: OpsTest, app: Application):
     unit = list(status.applications[app.name].units)[0]
     address = status["applications"][app.name]["units"][unit]["address"]
     response = requests.get(f"http://{address}:{GH_EXPORTER_WEBHOOK_PORT}/", timeout=10)
+    assert response.status_code == 200
+    assert "GitHub Actions Exporter" in response.text
+
+
+async def test_with_ingress(
+    ops_test: OpsTest,
+    app: Application,
+    traefik_app_name: str,
+    external_hostname: str,
+    get_unit_ips,
+):
+    """
+    arrange: build and deploy the flask charm, and deploy the ingress.
+    act: relate the ingress charm with the Flask charm.
+    assert: requesting the charm through traefik should return a correct response
+    """
+    assert ops_test.model
+    traefik_ip = next(await get_unit_ips(traefik_app_name))
+    response = requests.get(
+        f"http://{traefik_ip}",
+        headers={"Host": f"{ops_test.model_name}-{app.name}.{external_hostname}"},
+        timeout=5,
+    )
     assert response.status_code == 200
     assert "GitHub Actions Exporter" in response.text
