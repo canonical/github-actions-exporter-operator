@@ -52,8 +52,8 @@ async def test_with_ingress(
     get_unit_ips,
 ):
     """
-    arrange: build and deploy the flask charm, and deploy the ingress.
-    act: relate the ingress charm with the Flask charm.
+    arrange: build and deploy the github actions charm, and deploy the ingress.
+    act: relate the ingress charm with the github actions charm.
     assert: requesting the charm through traefik should return a correct response
     """
     assert ops_test.model

@@ -138,7 +138,7 @@ class GithubActionsExporterOperatorCharm(CharmBase):
                 "github-actions-exporter-ready": {
                     "override": "replace",
                     "level": "ready",
-                    "tcp": {"port": self.state.github_webhook_token},
+                    "tcp": {"port": GH_EXPORTER_METRICS_PORT},
                 }
             },
         }

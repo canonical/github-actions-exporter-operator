@@ -34,7 +34,7 @@ def external_hostname_fixture() -> str:
 
 @fixture(scope="module", name="traefik_app_name")
 def traefik_app_name_fixture() -> str:
-    """Return the name of the traefix application deployed for tests."""
+    """Return the name of the traefik application deployed for tests."""
     return "traefik-k8s"
 
 
