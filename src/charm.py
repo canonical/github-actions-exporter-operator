@@ -14,7 +14,7 @@ from ops.charm import CharmBase, HookEvent, WorkloadEvent
 from ops.main import main
 from ops.model import ActiveStatus, BlockedStatus, MaintenanceStatus, WaitingStatus
 
-from github_actions_exporter import GitHubActionsExporter
+from github_actions_exporter import get_exporter_version
 from state import State
 from types_ import CharmState
 
@@ -60,16 +60,6 @@ class GithubActionsExporterOperatorCharm(CharmBase):
             ],
         )
 
-    @property
-    def _github_actions_exporter(self) -> GitHubActionsExporter:
-        """Returns an instance of the GitHub Actions Exporter object.
-
-        Returns:
-            Instance of GitHub Actions Exporter
-        """
-        container = self.unit.get_container("github-actions-exporter")
-        return GitHubActionsExporter(container)
-
     def _on_github_actions_exporter_pebble_ready(self, event: WorkloadEvent):
         """Define and start a workload using the Pebble API.
 
@@ -81,7 +71,8 @@ class GithubActionsExporterOperatorCharm(CharmBase):
         container.add_layer(container.name, self._pebble_layer, combine=True)
         container.replan()
         self.unit.status = ActiveStatus()
-        self.unit.set_workload_version(self._github_actions_exporter.get_exporter_version())
+        version = get_exporter_version(container)
+        self.unit.set_workload_version(version)
 
     def _is_configuration_valid(self) -> bool:
         """Check if there is no empty configuration.
