@@ -14,12 +14,12 @@ from ops.charm import CharmBase, HookEvent, WorkloadEvent
 from ops.main import main
 from ops.model import ActiveStatus, BlockedStatus, MaintenanceStatus, WaitingStatus
 
-from github_actions_exporter import get_exporter_version
-from state import State
-from types_ import CharmState
+from charm_state import CharmState
+from github_actions_exporter import exporter_environment, exporter_version, is_configuration_valid
 
 logger = logging.getLogger(__name__)
 
+GH_EXPORTER_CONTAINER_NAME = "github-actions-exporter"
 GH_EXPORTER_METRICS_PORT = 9101
 GH_EXPORTER_WEBHOOK_PORT = 8065
 
@@ -35,7 +35,7 @@ class GithubActionsExporterOperatorCharm(CharmBase):
             self._on_github_actions_exporter_pebble_ready,
         )
         self.framework.observe(self.on.config_changed, self._on_config_changed)
-        self.state: CharmState = State(self)
+        self.state: CharmState = CharmState(self)
         self.ingress = IngressPerAppRequirer(
             self,
             port=GH_EXPORTER_WEBHOOK_PORT,
@@ -71,19 +71,8 @@ class GithubActionsExporterOperatorCharm(CharmBase):
         container.add_layer(container.name, self._pebble_layer, combine=True)
         container.replan()
         self.unit.status = ActiveStatus()
-        version = get_exporter_version(container)
+        version = exporter_version(container, self.state)
         self.unit.set_workload_version(version)
-
-    def _is_configuration_valid(self) -> bool:
-        """Check if there is no empty configuration.
-
-        Returns:
-            True if they are all set
-        """
-        github_webhook_token = self.state.github_webhook_token
-        github_api_token = self.state.github_api_token
-        github_org = self.state.github_org
-        return all([github_webhook_token, github_api_token, github_org])
 
     def _on_config_changed(self, event: HookEvent) -> None:
         """Handle changed configuration.
@@ -91,17 +80,17 @@ class GithubActionsExporterOperatorCharm(CharmBase):
         Args:
             event: Event triggering after config is changed.
         """
-        if not self._is_configuration_valid():
+        if not is_configuration_valid(self.state):
             self.model.unit.status = BlockedStatus("Configuration is not valid")
             event.defer()
             return
-        container = self.unit.get_container("github-actions-exporter")
+        container = self.unit.get_container(GH_EXPORTER_CONTAINER_NAME)
         if not container.can_connect():
             event.defer()
             self.unit.status = WaitingStatus("Waiting for pebble")
             return
         self.model.unit.status = MaintenanceStatus("Configuring pod")
-        container.add_layer("github-actions-exporter", self._pebble_layer, combine=True)
+        container.add_layer(GH_EXPORTER_CONTAINER_NAME, self._pebble_layer, combine=True)
         container.replan()
         self.unit.status = ActiveStatus()
 
@@ -116,13 +105,9 @@ class GithubActionsExporterOperatorCharm(CharmBase):
                     "override": "replace",
                     "summary": "github-actions-exporter",
                     "startup": "enabled",
-                    "user": "gh_exporter",
-                    "command": "/srv/gh_exporter/github-actions-exporter",
-                    "environment": {
-                        "GITHUB_WEBHOOK_TOKEN": f"{self.state.github_webhook_token}",
-                        "GITHUB_API_TOKEN": f"{self.state.github_api_token}",
-                        "GITHUB_ORG": f"{self.state.github_org}",
-                    },
+                    "user": self.state.github_exporter_user,
+                    "command": self.state.github_exporter_command,
+                    "environment": exporter_environment(self.state),
                 }
             },
             "checks": {

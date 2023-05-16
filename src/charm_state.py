@@ -7,21 +7,12 @@
 from ops.charm import CharmBase
 
 
-class State:
+class CharmState:
     """State of the Charm."""
 
     def __init__(self, charm: CharmBase) -> None:
         """Construct."""
         self._charm = charm
-
-    @property
-    def external_hostname(self) -> str:
-        """Return external_hostname config.
-
-        Returns:
-            str: external_hostname config.
-        """
-        return self._charm.config["external_hostname"]
 
     @property
     def github_webhook_token(self) -> str:
@@ -49,3 +40,21 @@ class State:
             str: github_org config.
         """
         return self._charm.config["github_org"]
+
+    @property
+    def github_exporter_command(self) -> str:
+        """Return the github exporter command.
+
+        Returns:
+            str: github exporter command path.
+        """
+        return "/srv/gh_exporter/github-actions-exporter"
+
+    @property
+    def github_exporter_user(self) -> str:
+        """Return the github exporter user that will run the exporter.
+
+        Returns:
+            str: user name.
+        """
+        return "gh_exporter"
