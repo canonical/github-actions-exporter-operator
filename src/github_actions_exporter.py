@@ -5,13 +5,14 @@
 """Helper module used to manage interactions with GitHub Actions Exporter."""
 
 from re import findall
+from typing import Dict
 
 from ops.model import Container
 
 from charm_state import CharmState
 
 
-def exporter_environment(state: CharmState) -> dict[str, str]:
+def exporter_environment(state: CharmState) -> Dict[str, str]:
     """Generate a environment dictionary from the charm configurations.
 
     Args:
