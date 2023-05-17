@@ -42,6 +42,8 @@ class GithubActionsExporterOperatorCharm(CharmBase):
             # We're forced to use the app's service endpoint
             # as the ingress per app interface currently always routes to the leader.
             # https://github.com/canonical/traefik-k8s-operator/issues/159
+            # For juju >= 3.1.1, this could be used in combination with open-port for true load
+            # balancing.
             host=f"{self.app.name}-endpoints.{self.model.name}.svc.cluster.local",
             strip_prefix=True,
         )
