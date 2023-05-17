@@ -14,14 +14,10 @@ from ops.charm import CharmBase, HookEvent, WorkloadEvent
 from ops.main import main
 from ops.model import ActiveStatus, BlockedStatus, MaintenanceStatus, WaitingStatus
 
+import github_actions_exporter as gh_exporter
 from charm_state import CharmState
-from github_actions_exporter import exporter_environment, exporter_version, is_configuration_valid
 
 logger = logging.getLogger(__name__)
-
-GH_EXPORTER_CONTAINER_NAME = "github-actions-exporter"
-GH_EXPORTER_METRICS_PORT = 9101
-GH_EXPORTER_WEBHOOK_PORT = 8065
 
 
 class GithubActionsExporterOperatorCharm(CharmBase):
@@ -38,7 +34,7 @@ class GithubActionsExporterOperatorCharm(CharmBase):
         self.state: CharmState = CharmState(self)
         self.ingress = IngressPerAppRequirer(
             self,
-            port=GH_EXPORTER_WEBHOOK_PORT,
+            port=gh_exporter.WEBHOOK_PORT,
             # We're forced to use the app's service endpoint
             # as the ingress per app interface currently always routes to the leader.
             # https://github.com/canonical/traefik-k8s-operator/issues/159
@@ -54,7 +50,7 @@ class GithubActionsExporterOperatorCharm(CharmBase):
                     "static_configs": [
                         {
                             "targets": [
-                                f"*:{GH_EXPORTER_METRICS_PORT}",
+                                f"*:{gh_exporter.METRICS_PORT}",
                             ]
                         }
                     ]
@@ -73,7 +69,7 @@ class GithubActionsExporterOperatorCharm(CharmBase):
         container.add_layer(container.name, self._pebble_layer, combine=True)
         container.replan()
         self.unit.status = ActiveStatus()
-        version = exporter_version(container, self.state)
+        version = gh_exporter.version(container, self.state)
         self.unit.set_workload_version(version)
 
     def _on_config_changed(self, event: HookEvent) -> None:
@@ -82,17 +78,17 @@ class GithubActionsExporterOperatorCharm(CharmBase):
         Args:
             event: Event triggering after config is changed.
         """
-        if not is_configuration_valid(self.state):
+        if not gh_exporter.is_configuration_valid(self.state):
             self.model.unit.status = BlockedStatus("Configuration is not valid")
             event.defer()
             return
-        container = self.unit.get_container(GH_EXPORTER_CONTAINER_NAME)
+        container = self.unit.get_container(gh_exporter.CONTAINER_NAME)
         if not container.can_connect():
             event.defer()
             self.unit.status = WaitingStatus("Waiting for pebble")
             return
         self.model.unit.status = MaintenanceStatus("Configuring pod")
-        container.add_layer(GH_EXPORTER_CONTAINER_NAME, self._pebble_layer, combine=True)
+        container.add_layer(gh_exporter.CONTAINER_NAME, self._pebble_layer, combine=True)
         container.replan()
         self.unit.status = ActiveStatus()
 
@@ -109,14 +105,14 @@ class GithubActionsExporterOperatorCharm(CharmBase):
                     "startup": "enabled",
                     "user": self.state.github_exporter_user,
                     "command": self.state.github_exporter_command,
-                    "environment": exporter_environment(self.state),
+                    "environment": gh_exporter.environment(self.state),
                 }
             },
             "checks": {
                 "github-actions-exporter-ready": {
                     "override": "replace",
                     "level": "ready",
-                    "tcp": {"port": GH_EXPORTER_METRICS_PORT},
+                    "tcp": {"port": gh_exporter.METRICS_PORT},
                 }
             },
         }

@@ -11,8 +11,12 @@ from ops.model import Container
 
 from charm_state import CharmState
 
+CONTAINER_NAME = "github-actions-exporter"
+METRICS_PORT = 9101
+WEBHOOK_PORT = 8065
 
-def exporter_environment(state: CharmState) -> Dict[str, str]:
+
+def environment(state: CharmState) -> Dict[str, str]:
     """Generate a environment dictionary from the charm configurations.
 
     Args:
@@ -28,7 +32,7 @@ def exporter_environment(state: CharmState) -> Dict[str, str]:
     }
 
 
-def exporter_version(container: Container, state: CharmState) -> str:
+def version(container: Container, state: CharmState) -> str:
     """Retrieve the current version of GitHub Actions Exporter.
 
     Args:
@@ -40,8 +44,8 @@ def exporter_version(container: Container, state: CharmState) -> str:
     """
     process = container.exec([state.github_exporter_command, "--version"], user="gh_exporter")
     version_string, _ = process.wait_output()
-    version = findall("[0-9a-f]{5,40}", version_string)
-    return version[0][0:7] if version else ""
+    version_found = findall("[0-9a-f]{5,40}", version_string)
+    return version_found[0][0:7] if version_found else ""
 
 
 def is_configuration_valid(state: CharmState) -> bool:
@@ -53,7 +57,4 @@ def is_configuration_valid(state: CharmState) -> bool:
     Returns:
         True if they are all set
     """
-    github_webhook_token = state.github_webhook_token
-    github_api_token = state.github_api_token
-    github_org = state.github_org
-    return all([github_webhook_token, github_api_token, github_org])
+    return all([state.github_webhook_token, state.github_api_token, state.github_org])
