@@ -15,13 +15,13 @@ class CharmState:
         self._charm = charm
 
     @property
-    def github_webhook_token(self) -> str:
-        """Return github_webhook_token config.
+    def container_name(self) -> str:
+        """Return the github exporter container name.
 
         Returns:
-            str: github_webhook_token config.
+            str: container name.
         """
-        return self._charm.config["github_webhook_token"]
+        return "github-actions-exporter"
 
     @property
     def github_api_token(self) -> str:
@@ -42,22 +42,13 @@ class CharmState:
         return self._charm.config["github_org"]
 
     @property
-    def user(self) -> str:
-        """Return the github exporter user that will run the exporter.
+    def github_webhook_token(self) -> str:
+        """Return github_webhook_token config.
 
         Returns:
-            str: user name.
+            str: github_webhook_token config.
         """
-        return "gh_exporter"
-
-    @property
-    def container_name(self) -> str:
-        """Return the github exporter container name.
-
-        Returns:
-            str: container name.
-        """
-        return "github-actions-exporter"
+        return self._charm.config["github_webhook_token"]
 
     @property
     def metrics_port(self) -> int:
@@ -67,6 +58,15 @@ class CharmState:
             int: port number.
         """
         return 9101
+
+    @property
+    def user(self) -> str:
+        """Return the github exporter user that will run the exporter.
+
+        Returns:
+            str: user name.
+        """
+        return "gh_exporter"
 
     @property
     def webhook_port(self) -> int:

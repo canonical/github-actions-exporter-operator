@@ -109,11 +109,7 @@ class GithubActionsExporterOperatorCharm(CharmBase):
                 }
             },
             "checks": {
-                "github-actions-exporter-ready": {
-                    "override": "replace",
-                    "level": "ready",
-                    "tcp": {"port": self.state.metrics_port},
-                }
+                gh_exporter.CHECK_READY_NAME: gh_exporter.check_ready(self.state),
             },
         }
 
