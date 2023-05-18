@@ -42,19 +42,37 @@ class CharmState:
         return self._charm.config["github_org"]
 
     @property
-    def github_exporter_command(self) -> str:
-        """Return the github exporter command.
-
-        Returns:
-            str: github exporter command path.
-        """
-        return "/srv/gh_exporter/github-actions-exporter"
-
-    @property
-    def github_exporter_user(self) -> str:
+    def user(self) -> str:
         """Return the github exporter user that will run the exporter.
 
         Returns:
             str: user name.
         """
         return "gh_exporter"
+
+    @property
+    def container_name(self) -> str:
+        """Return the github exporter container name.
+
+        Returns:
+            str: container name.
+        """
+        return "github-actions-exporter"
+
+    @property
+    def metrics_port(self) -> int:
+        """Return the port to get metrics from the github exporter.
+
+        Returns:
+            int: port number.
+        """
+        return 9101
+
+    @property
+    def webhook_port(self) -> int:
+        """Return the github exporter user that will run the exporter.
+
+        Returns:
+            int: port number.
+        """
+        return 8065

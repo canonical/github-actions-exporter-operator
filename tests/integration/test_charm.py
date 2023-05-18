@@ -10,8 +10,6 @@ import requests
 from ops.model import ActiveStatus, Application
 from pytest_operator.plugin import OpsTest
 
-import github_actions_exporter as gh_exporter
-
 logger = logging.getLogger()
 
 
@@ -39,7 +37,7 @@ async def test_githubactionsexporter_is_up(ops_test: OpsTest, app: Application):
     status = await ops_test.model.get_status()
     unit = list(status.applications[app.name].units)[0]
     address = status["applications"][app.name]["units"][unit]["address"]
-    response = requests.get(f"http://{address}:{gh_exporter.WEBHOOK_PORT}/", timeout=10)
+    response = requests.get(f"http://{address}:8065/", timeout=10)
     assert response.status_code == 200
     assert "GitHub Actions Exporter" in response.text
 

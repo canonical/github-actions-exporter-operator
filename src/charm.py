@@ -34,7 +34,7 @@ class GithubActionsExporterOperatorCharm(CharmBase):
         self.state: CharmState = CharmState(self)
         self.ingress = IngressPerAppRequirer(
             self,
-            port=gh_exporter.WEBHOOK_PORT,
+            port=self.state.webhook_port,
             # We're forced to use the app's service endpoint
             # as the ingress per app interface currently always routes to the leader.
             # https://github.com/canonical/traefik-k8s-operator/issues/159
@@ -50,7 +50,7 @@ class GithubActionsExporterOperatorCharm(CharmBase):
                     "static_configs": [
                         {
                             "targets": [
-                                f"*:{gh_exporter.METRICS_PORT}",
+                                f"*:{self.state.metrics_port}",
                             ]
                         }
                     ]
@@ -82,13 +82,13 @@ class GithubActionsExporterOperatorCharm(CharmBase):
             self.model.unit.status = BlockedStatus("Configuration is not valid")
             event.defer()
             return
-        container = self.unit.get_container(gh_exporter.CONTAINER_NAME)
+        container = self.unit.get_container(self.state.container_name)
         if not container.can_connect():
             event.defer()
             self.unit.status = WaitingStatus("Waiting for pebble")
             return
         self.model.unit.status = MaintenanceStatus("Configuring pod")
-        container.add_layer(gh_exporter.CONTAINER_NAME, self._pebble_layer, combine=True)
+        container.add_layer(self.state.container_name, self._pebble_layer, combine=True)
         container.replan()
         self.unit.status = ActiveStatus()
 
@@ -103,8 +103,8 @@ class GithubActionsExporterOperatorCharm(CharmBase):
                     "override": "replace",
                     "summary": "github-actions-exporter",
                     "startup": "enabled",
-                    "user": self.state.github_exporter_user,
-                    "command": self.state.github_exporter_command,
+                    "user": self.state.user,
+                    "command": gh_exporter.COMMAND_PATH,
                     "environment": gh_exporter.environment(self.state),
                 }
             },
@@ -112,7 +112,7 @@ class GithubActionsExporterOperatorCharm(CharmBase):
                 "github-actions-exporter-ready": {
                     "override": "replace",
                     "level": "ready",
-                    "tcp": {"port": gh_exporter.METRICS_PORT},
+                    "tcp": {"port": self.state.metrics_port},
                 }
             },
         }

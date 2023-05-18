@@ -11,8 +11,7 @@ from ops.model import Container
 
 from charm_state import CharmState
 
-CONTAINER_NAME = "github-actions-exporter"
-METRICS_PORT = 9101
+COMMAND_PATH = "/srv/gh_exporter/github-actions-exporter"
 WEBHOOK_PORT = 8065
 
 
@@ -42,7 +41,7 @@ def version(container: Container, state: CharmState) -> str:
     Returns:
         The  GitHub Actions Exporter version installed.
     """
-    process = container.exec([state.github_exporter_command, "--version"], user="gh_exporter")
+    process = container.exec([COMMAND_PATH, "--version"], user=state.user)
     version_string, _ = process.wait_output()
     version_found = findall("[0-9a-f]{5,40}", version_string)
     return version_found[0][0:7] if version_found else ""
