@@ -1,0 +1,35 @@
+# Copyright 2023 Canonical Ltd.
+# See LICENSE file for licensing details.
+name: githubactionsexporter
+summary: githubactionsexporter rock
+description: GitHub Actions Exporter OCI image for the GitHub Actions Exporter charm
+version: "1.0"
+base: bare
+build-base: ubuntu:22.04
+license: Apache-2.0
+platforms:
+  amd64:
+parts:
+  add-user:
+    plugin: nil
+    overlay-script: |
+      mkdir $CRAFT_OVERLAY/etc
+      chmod 755 $CRAFT_OVERLAY/etc
+      groupadd -R $CRAFT_OVERLAY --gid 2000 gh_exporter
+      useradd -R $CRAFT_OVERLAY --system --gid 2000 --uid 2000 --home /srv/gh_exporter/ gh_exporter
+  gh_exporter:
+    plugin: go
+    source: https://github.com/cpanato/github_actions_exporter
+    source-type: git
+    source-branch: main
+    build-snaps:
+      - go
+    stage-packages:
+      - ca-certificates
+    override-build: |
+      make build
+      /bin/bash -c "chown 2000:2000 github-actions-exporter"
+      /bin/bash -c "chmod 755 github-actions-exporter"
+      cp github-actions-exporter ${CRAFT_PART_INSTALL}
+    organize:
+      github-actions-exporter: srv/gh_exporter/github-actions-exporter

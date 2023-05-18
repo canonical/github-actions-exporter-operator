@@ -1,0 +1,30 @@
+# Copyright 2023 Canonical Ltd.
+# See LICENSE file for licensing details.
+name: github-actions-exporter
+display-name: GitHub Actions Exporter
+summary: GitHub Actions Exporter
+description: Collects metrics from GitHub Actions.
+docs: ""
+issues: https://github.com/canonical/github-actions-exporter-operator/issues
+maintainers:
+  - launchpad.net/~canonical-is-devops
+source: https://github.com/canonical/github-actions-exporter-operator
+assumes:
+  - k8s-api
+containers:
+  github-actions-exporter:
+    resource: github-actions-exporter-image
+
+resources:
+  github-actions-exporter-image:
+    type: oci-image
+    description: Docker image for GitHub Actions Exporter
+
+provides:
+  metrics-endpoint:
+    interface: prometheus_scrape
+
+requires:
+  ingress:
+    interface: ingress
+    limit: 1
