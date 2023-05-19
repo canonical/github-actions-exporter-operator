@@ -8,12 +8,29 @@ from re import findall
 from typing import Dict
 
 from ops.model import Container
+from ops.pebble import Check
 
 from charm_state import CharmState
 
-CONTAINER_NAME = "github-actions-exporter"
-METRICS_PORT = 9101
-WEBHOOK_PORT = 8065
+COMMAND_PATH = "/srv/gh_exporter/github-actions-exporter"
+CHECK_READY_NAME = "github-actions-exporter-ready"
+
+
+def check_ready(state: CharmState) -> Dict:
+    """Return the github exporter container check.
+
+    Args:
+        state: The state of the charm.
+
+    Returns:
+        Dict: check object converted to its dict representation.
+    """
+    check = Check(CHECK_READY_NAME)
+    check.override = "replace"
+    check.level = "ready"
+    check.tcp = {"port": state.metrics_port}
+    # _CheckDict cannot be imported
+    return check.to_dict()  # type: ignore
 
 
 def environment(state: CharmState) -> Dict[str, str]:
@@ -32,22 +49,6 @@ def environment(state: CharmState) -> Dict[str, str]:
     }
 
 
-def version(container: Container, state: CharmState) -> str:
-    """Retrieve the current version of GitHub Actions Exporter.
-
-    Args:
-        container: The container of the charm.
-        state: The state of the charm.
-
-    Returns:
-        The  GitHub Actions Exporter version installed.
-    """
-    process = container.exec([state.github_exporter_command, "--version"], user="gh_exporter")
-    version_string, _ = process.wait_output()
-    version_found = findall("[0-9a-f]{5,40}", version_string)
-    return version_found[0][0:7] if version_found else ""
-
-
 def is_configuration_valid(state: CharmState) -> bool:
     """Check if there is no empty configuration.
 
@@ -58,3 +59,19 @@ def is_configuration_valid(state: CharmState) -> bool:
         True if they are all set
     """
     return all([state.github_webhook_token, state.github_api_token, state.github_org])
+
+
+def version(container: Container, state: CharmState) -> str:
+    """Retrieve the current version of GitHub Actions Exporter.
+
+    Args:
+        container: The container of the charm.
+        state: The state of the charm.
+
+    Returns:
+        The  GitHub Actions Exporter version installed.
+    """
+    process = container.exec([COMMAND_PATH, "--version"], user=state.user)
+    version_string, _ = process.wait_output()
+    version_found = findall("[0-9a-f]{5,40}", version_string)
+    return version_found[0][0:7] if version_found else ""
