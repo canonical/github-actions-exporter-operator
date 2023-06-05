@@ -25,7 +25,11 @@ parts:
     build-snaps:
       - go
     stage-packages:
+      - bash
       - ca-certificates
+      - locales
+    stage-snaps:
+      - celery-prometheus-exporter/latest/edge
     override-build: |
       make build
       /bin/bash -c "chown 2000:2000 github-actions-exporter"
