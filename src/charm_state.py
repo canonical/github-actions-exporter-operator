@@ -4,75 +4,121 @@
 # See LICENSE file for licensing details.
 
 """State of the Charm."""
-from ops.charm import CharmBase
+import itertools
+import typing
+
+# pydantic is causing this no-name-in-module problem
+from pydantic import (  # pylint: disable=no-name-in-module,import-error
+    BaseModel,
+    Extra,
+    Field,
+    ValidationError,
+)
+
+from exceptions import CharmConfigInvalidError
+
+if typing.TYPE_CHECKING:
+    from charm import GithubActionsExporterCharm
+
+
+KNOWN_CHARM_CONFIG = (
+    "github_api_token",
+    "github_org",
+    "github_webhook_token",
+)
+
+
+class GithubActionsExporterConfig(BaseModel):  # pylint: disable=too-few-public-methods
+    """Represent GithubActionsExporter builtin configuration values.
+
+    Attrs:
+        github_api_token: github_api_token config.
+        github_org: github_org config.
+        github_webhook_token: github_webhook_token config.
+    """
+
+    github_api_token: str | None = Field(None, min_length=1)
+    github_org: str | None = Field(None, min_length=1)
+    github_webhook_token: str | None = Field(None, min_length=1)
+
+    class Config:  # pylint: disable=too-few-public-methods
+        """Config class.
+
+        Attrs:
+            extra: extra configuration.
+        """
+
+        extra = Extra.allow
 
 
 class CharmState:
-    """State of the Charm."""
+    """State of the Charm.
 
-    def __init__(self, charm: CharmBase) -> None:
-        """Construct."""
-        self._charm = charm
+    Attrs:
+        github_api_token: github_api_token config.
+        github_org: github_org config.
+        github_webhook_token: github_webhook_token config.
+    """
 
-    @property
-    def container_name(self) -> str:
-        """Return the github exporter container name.
+    def __init__(
+        self,
+        *,
+        github_config: GithubActionsExporterConfig,
+    ) -> None:
+        """Construct.
 
-        Returns:
-            str: container name.
+        Args:
+            github_config: The value of the github_config charm configuration.
         """
-        return "github-actions-exporter"
+        self._github_config = github_config
 
     @property
-    def github_api_token(self) -> str:
+    def github_api_token(self) -> typing.Optional[str]:
         """Return github_api_token config.
 
         Returns:
             str: github_api_token config.
         """
-        return self._charm.config["github_api_token"]
+        return self._github_config.github_api_token
 
     @property
-    def github_org(self) -> str:
+    def github_org(self) -> typing.Optional[str]:
         """Return github_org config.
 
         Returns:
             str: github_org config.
         """
-        return self._charm.config["github_org"]
+        return self._github_config.github_org
 
     @property
-    def github_webhook_token(self) -> str:
+    def github_webhook_token(self) -> typing.Optional[str]:
         """Return github_webhook_token config.
 
         Returns:
             str: github_webhook_token config.
         """
-        return self._charm.config["github_webhook_token"]
+        return self._github_config.github_webhook_token
 
-    @property
-    def metrics_port(self) -> int:
-        """Return the port to get metrics from the github exporter.
+    @classmethod
+    def from_charm(cls, charm: "GithubActionsExporterCharm") -> "CharmState":
+        """Initialize a new instance of the CharmState class from the associated charm.
 
-        Returns:
-            int: port number.
+        Args:
+            charm: The charm instance associated with this state.
+
+        Return:
+            The CharmState instance created by the provided charm.
+
+        Raises:
+            CharmConfigInvalidError: if the charm configuration is invalid.
         """
-        return 9101
-
-    @property
-    def user(self) -> str:
-        """Return the github exporter user that will run the exporter.
-
-        Returns:
-            str: user name.
-        """
-        return "gh_exporter"
-
-    @property
-    def webhook_port(self) -> int:
-        """Return the github exporter user that will run the exporter.
-
-        Returns:
-            int: port number.
-        """
-        return 8065
+        github_config = {k: v for k, v in charm.config.items() if k in KNOWN_CHARM_CONFIG}
+        try:
+            valid_github_config = GithubActionsExporterConfig(**github_config)  # type: ignore
+        except ValidationError as exc:
+            error_fields = set(
+                itertools.chain.from_iterable(error["loc"] for error in exc.errors())
+            )
+            error_field_str = " ".join(f"{f}" for f in error_fields)
+            raise CharmConfigInvalidError(f"invalid configuration: {error_field_str}") from exc
+        return cls(github_config=valid_github_config)

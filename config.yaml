@@ -2,18 +2,24 @@
 # See LICENSE file for licensing details.
 
 options:
+  external_hostname:
+      type: string
+      description: |
+        External hostname this charm instance responds to.
+        Defaults to application name.
+      default: ""
   github_webhook_token:
     type: string
     description: The secret token defined while creating the Webhook.
-    default: 'default'
+    default: "default"
   github_api_token:
     type: string
-    description: >-
+    description: |
       The GitHub API Access Token used to collect the Action Billing metrics.
-    default: 'default'
+    default: "default"
   github_org:
     type: string
-    description: >-
+    description: |
       GitHub Organization from which the Action Billing metrics will be
       collected.
-    default: 'default'
+    default: "default"
