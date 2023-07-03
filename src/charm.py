@@ -9,6 +9,7 @@ import logging
 from typing import Dict
 
 import ops
+from charms.nginx_ingress_integrator.v0.nginx_route import require_nginx_route
 from charms.prometheus_k8s.v0.prometheus_scrape import MetricsEndpointProvider
 from charms.traefik_k8s.v1.ingress import IngressPerAppRequirer
 from ops.charm import CharmBase, HookEvent, WorkloadEvent
@@ -33,6 +34,15 @@ class GithubActionsExporterCharm(CharmBase):
         except CharmConfigInvalidError as exc:
             self.model.unit.status = ops.BlockedStatus(exc.msg)
             return
+        # service-hostname is a required field so we're hardcoding to the same
+        # value as service-name. service-hostname should be set via Nginx
+        # Ingress Integrator charm config.
+        require_nginx_route(
+            charm=self,
+            service_hostname=self.app.name,
+            service_name=self.app.name,
+            service_port=GITHUB_WEBHOOK_PORT,
+        )
         self.ingress = IngressPerAppRequirer(
             self,
             port=GITHUB_WEBHOOK_PORT,

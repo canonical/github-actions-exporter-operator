@@ -39,7 +39,7 @@ def traefik_app_name_fixture() -> str:
 
 
 @pytest_asyncio.fixture(scope="module", name="get_unit_ips")
-async def fixture_get_unit_ips(ops_test: OpsTest):
+async def get_unit_ips_fixture(ops_test: OpsTest):
     """Return an async function to retrieve unit ip addresses of a certain application."""
 
     async def get_unit_ips(application_name: str):
@@ -59,8 +59,8 @@ async def fixture_get_unit_ips(ops_test: OpsTest):
     return get_unit_ips
 
 
-@pytest_asyncio.fixture(scope="module")
-async def app(
+@pytest_asyncio.fixture(scope="module", name="gh_app")
+async def gh_app_fixture(
     ops_test: OpsTest,
     app_name: str,
     pytestconfig: Config,
@@ -102,3 +102,26 @@ async def app(
     await ops_test.model.wait_for_idle(status="active", raise_on_error=False)
 
     yield application
+
+
+@fixture(scope="module", name="nginx_integrator_app_name")
+def nginx_integrator_app_name_fixture() -> str:
+    """Return the name of the nginx integrator application deployed for tests."""
+    return "nginx-ingress-integrator"
+
+
+@pytest_asyncio.fixture(scope="module", name="nginx_integrator_app")
+async def nginx_integrator_app_fixture(
+    ops_test: OpsTest,
+    gh_app,  # pylint: disable=unused-argument
+    nginx_integrator_app_name: str,
+):
+    """Deploy nginx-ingress-integrator."""
+    assert ops_test.model
+    nginx_integrator_app = await ops_test.model.deploy(
+        "nginx-ingress-integrator",
+        application_name=nginx_integrator_app_name,
+        trust=True,
+    )
+    await ops_test.model.wait_for_idle(raise_on_blocked=True)
+    return nginx_integrator_app
