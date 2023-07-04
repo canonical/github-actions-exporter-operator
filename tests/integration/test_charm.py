@@ -69,10 +69,10 @@ async def test_with_ingress(
     assert "GitHub Actions Exporter" in response.text
 
 
+@pytest.mark.usefixtures("nginx_integrator_app")
 async def test_with_nginx_route(
     ops_test: OpsTest,
-    gh_app: Application,  # pylint: disable=unused-argument
-    nginx_integrator_app,  # pylint: disable=unused-argument
+    gh_app: Application,
     nginx_integrator_app_name: str,
 ):
     """

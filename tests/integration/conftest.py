@@ -88,11 +88,11 @@ async def gh_app_fixture(
         "github-actions-exporter-image": pytestconfig.getoption("--githubactionsexporter-image"),
     }
     charm = await ops_test.build_charm(".")
-    application = await ops_test.model.deploy(
-        charm, resources=resources, application_name=app_name, series="focal"
-    )
-
-    await dependencies
+    async with ops_test.fast_forward():
+        application = await ops_test.model.deploy(
+            charm, resources=resources, application_name=app_name, series="focal"
+        )
+        await dependencies
     # Add required relations, mypy has difficulty with WaitingStatus
     expected_name = WaitingStatus.name  # type: ignore
     assert ops_test.model.applications[app_name].units[0].workload_status == expected_name
@@ -123,5 +123,6 @@ async def nginx_integrator_app_fixture(
         application_name=nginx_integrator_app_name,
         trust=True,
     )
-    await ops_test.model.wait_for_idle(raise_on_blocked=True)
+    async with ops_test.fast_forward():
+        await ops_test.model.wait_for_idle(raise_on_blocked=True)
     return nginx_integrator_app

@@ -6,7 +6,7 @@
 """Charm for GitHub Actions Exporter on kubernetes."""
 
 import logging
-from typing import Dict
+import typing
 
 import ops
 from charms.nginx_ingress_integrator.v0.nginx_route import require_nginx_route
@@ -109,9 +109,9 @@ class GithubActionsExporterCharm(CharmBase):
         self.unit.status = ops.ActiveStatus()
 
     @property
-    def _pebble_layer(self) -> Dict:
+    def _pebble_layer(self) -> ops.pebble.LayerDict:
         """Return a dictionary representing a Pebble layer."""
-        return {
+        layer = {
             "summary": "GitHub Actions Exporter layer",
             "description": "pebble config layer for GitHub Actions Exporter",
             "services": {
@@ -128,6 +128,7 @@ class GithubActionsExporterCharm(CharmBase):
                 gh_exporter.CHECK_READY_NAME: gh_exporter.check_ready(),
             },
         }
+        return typing.cast(ops.pebble.LayerDict, layer)
 
 
 if __name__ == "__main__":  # pragma: nocover

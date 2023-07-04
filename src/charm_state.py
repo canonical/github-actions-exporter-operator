@@ -37,9 +37,9 @@ class GithubActionsExporterConfig(BaseModel):  # pylint: disable=too-few-public-
         github_webhook_token: github_webhook_token config.
     """
 
-    github_api_token: str | None = Field(None, min_length=1)
-    github_org: str | None = Field(None, min_length=1)
-    github_webhook_token: str | None = Field(None, min_length=1)
+    github_api_token: str = Field(None, min_length=1)
+    github_org: str = Field(None, min_length=1)
+    github_webhook_token: str = Field(..., min_length=1)
 
     class Config:  # pylint: disable=too-few-public-methods
         """Config class.
@@ -73,7 +73,7 @@ class CharmState:
         self._github_config = github_config
 
     @property
-    def github_api_token(self) -> typing.Optional[str]:
+    def github_api_token(self) -> str:
         """Return github_api_token config.
 
         Returns:
@@ -82,7 +82,7 @@ class CharmState:
         return self._github_config.github_api_token
 
     @property
-    def github_org(self) -> typing.Optional[str]:
+    def github_org(self) -> str:
         """Return github_org config.
 
         Returns:
@@ -91,7 +91,7 @@ class CharmState:
         return self._github_config.github_org
 
     @property
-    def github_webhook_token(self) -> typing.Optional[str]:
+    def github_webhook_token(self) -> str:
         """Return github_webhook_token config.
 
         Returns:
