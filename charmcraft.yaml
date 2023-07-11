@@ -8,3 +8,10 @@ bases:
     run-on:
     - name: ubuntu
       channel: "22.04"
+parts:
+  charm:
+    build-packages:
+      - libffi-dev  # for cffi
+      - libssl-dev  # for cryptography
+      - rust-all  # for cryptography
+      - pkg-config # for cryptography
