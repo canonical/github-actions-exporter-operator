@@ -85,7 +85,7 @@ async def gh_app_fixture(
     )
 
     resources = {
-        "github-actions-exporter-image": pytestconfig.getoption("--githubactionsexporter-image"),
+        "github-actions-exporter-image": pytestconfig.getoption("--github-actions-exporter-image"),
     }
     charm = await ops_test.build_charm(".")
     async with ops_test.fast_forward():
