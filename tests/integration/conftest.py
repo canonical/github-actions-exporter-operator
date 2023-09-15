@@ -87,10 +87,10 @@ async def gh_app_fixture(
     resources = {
         "github-actions-exporter-image": pytestconfig.getoption("--github-actions-exporter-image"),
     }
-    charm = await ops_test.build_charm(".")
+    charm = pytestconfig.getoption("--charm-file")
     async with ops_test.fast_forward():
         application = await ops_test.model.deploy(
-            charm, resources=resources, application_name=app_name, series="focal"
+            f"./{charm}", resources=resources, application_name=app_name, series="focal"
         )
         await dependencies
     # Add required relations, mypy has difficulty with WaitingStatus
