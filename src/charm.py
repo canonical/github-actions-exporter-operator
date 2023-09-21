@@ -6,37 +6,53 @@
 """Charm for GitHub Actions Exporter on kubernetes."""
 
 import logging
-from re import findall
-from typing import Dict
+import typing
 
-from charms.nginx_ingress_integrator.v0.ingress import IngressRequires
+import ops
+from charms.nginx_ingress_integrator.v0.nginx_route import require_nginx_route
 from charms.prometheus_k8s.v0.prometheus_scrape import MetricsEndpointProvider
+from charms.traefik_k8s.v1.ingress import IngressPerAppRequirer
 from ops.charm import CharmBase, HookEvent, WorkloadEvent
 from ops.main import main
-from ops.model import ActiveStatus, BlockedStatus, MaintenanceStatus, WaitingStatus
+
+import github_actions_exporter as gh_exporter
+from charm_state import CharmState
+from constants import GITHUB_CONTAINER_NAME, GITHUB_METRICS_PORT, GITHUB_USER, GITHUB_WEBHOOK_PORT
+from exceptions import CharmConfigInvalidError
 
 logger = logging.getLogger(__name__)
 
-GH_EXPORTER_PORT = 9101
-SVC_HOSTNAME = "service-hostname"
-SVC_NAME = "service-name"
-SVC_PORT = "service-port"
 
-
-class GithubActionsExporterOperatorCharm(CharmBase):
+class GithubActionsExporterCharm(CharmBase):
     """Charm the service."""
 
     def __init__(self, *args) -> None:
         """Construct."""
         super().__init__(*args)
-        self.framework.observe(
-            self.on.github_actions_exporter_pebble_ready,
-            self._on_github_actions_exporter_pebble_ready,
+        try:
+            self._charm_state = CharmState.from_charm(charm=self)
+        except CharmConfigInvalidError as exc:
+            self.model.unit.status = ops.BlockedStatus(exc.msg)
+            return
+        # service-hostname is a required field so we're hardcoding to the same
+        # value as service-name. service-hostname should be set via Nginx
+        # Ingress Integrator charm config.
+        require_nginx_route(
+            charm=self,
+            service_hostname=self.app.name,
+            service_name=self.app.name,
+            service_port=GITHUB_WEBHOOK_PORT,
         )
-        self.framework.observe(self.on.config_changed, self._on_config_changed)
-        self.ingress = IngressRequires(
+        self.ingress = IngressPerAppRequirer(
             self,
-            self.ingress_config(),
+            port=GITHUB_WEBHOOK_PORT,
+            # We're forced to use the app's service endpoint
+            # as the ingress per app interface currently always routes to the leader.
+            # https://github.com/canonical/traefik-k8s-operator/issues/159
+            # For juju >= 3.1.1, this could be used in combination with open-port for true load
+            # balancing.
+            host=f"{self.app.name}-endpoints.{self.model.name}.svc.cluster.local",
+            strip_prefix=True,
         )
         self._metrics_endpoint = MetricsEndpointProvider(
             self,
@@ -45,59 +61,18 @@ class GithubActionsExporterOperatorCharm(CharmBase):
                     "static_configs": [
                         {
                             "targets": [
-                                f"*:{GH_EXPORTER_PORT}",
+                                f"*:{GITHUB_METRICS_PORT}",
                             ]
                         }
                     ]
                 }
             ],
         )
-
-    def _has_required_fields(self, rel: Dict) -> bool:
-        """Check for required fields in relation.
-
-        Args:
-            rel: relation to check
-        Returns:
-            Returns true if all fields exist
-        """
-        return all(key in rel for key in (SVC_HOSTNAME, SVC_NAME, SVC_PORT))
-
-    def _has_app_data(self) -> bool:
-        """Check for app in relation data.
-
-        Returns:
-            Returns true if app data exist
-        """
-        return self.app in self.model.relations["ingress"][0].data
-
-    def _has_ingress_relation(self) -> bool:
-        """Check for ingress relation.
-
-        Returns:
-            Returns true if ingress relation exist
-        """
-        return "ingress" in self.model.relations and len(self.model.relations["ingress"]) > 0
-
-    def ingress_config(self) -> Dict:
-        """Get ingress config from relation or default.
-
-        Returns:
-            The ingress config to be used
-        """
-        if self._has_ingress_relation() and self._has_app_data():
-            rel = self.model.relations["ingress"][0].data[self.app]
-            if self._has_required_fields(rel):
-                return {
-                    SVC_HOSTNAME: self.config["external_hostname"] or self.app.name,
-                    SVC_NAME: rel[SVC_NAME],
-                    SVC_PORT: rel[SVC_PORT],
-                }
-        return {
-            SVC_HOSTNAME: self.config["external_hostname"] or self.app.name,
-            SVC_NAME: self.app.name,
-            SVC_PORT: GH_EXPORTER_PORT,
-        }
+        self.framework.observe(
+            self.on.github_actions_exporter_pebble_ready,
+            self._on_github_actions_exporter_pebble_ready,
+        )
+        self.framework.observe(self.on.config_changed, self._on_config_changed)
 
     def _on_github_actions_exporter_pebble_ready(self, event: WorkloadEvent):
         """Define and start a workload using the Pebble API.
@@ -106,36 +81,12 @@ class GithubActionsExporterOperatorCharm(CharmBase):
             event: Event triggering after pebble is ready.
         """
         container = event.workload
-        self.unit.status = MaintenanceStatus(f"Adding {container.name} layer to pebble")
+        self.unit.status = ops.MaintenanceStatus(f"Adding {container.name} layer to pebble")
         container.add_layer(container.name, self._pebble_layer, combine=True)
         container.replan()
-        self.unit.status = ActiveStatus()
-        self.unit.set_workload_version(self._get_exporter_version())
-
-    def _is_configuration_valid(self) -> bool:
-        """Check if there is no empty configuration.
-
-        Returns:
-            True if they are all set
-        """
-        github_webhook_token = self.model.config["github_webhook_token"]
-        github_api_token = self.model.config["github_api_token"]
-        github_org = self.model.config["github_org"]
-        return all([github_webhook_token, github_api_token, github_org])
-
-    def _get_exporter_version(self) -> str:
-        """Retrieve the current version of GitHub Actions Exporter.
-
-        Returns:
-            The  GitHub Actions Exporter version installed.
-        """
-        container = self.unit.get_container("github-actions-exporter")
-        process = container.exec(
-            ["/usr/local/bin/github-actions-exporter", "--version"], user="gh_exporter"
-        )
-        version_string, _ = process.wait_output()
-        version = findall("[0-9a-f]{5,40}", version_string)
-        return version[0][0:7] if version else ""
+        self.unit.status = ops.ActiveStatus()
+        version = gh_exporter.version(container)
+        self.unit.set_workload_version(version)
 
     def _on_config_changed(self, event: HookEvent) -> None:
         """Handle changed configuration.
@@ -143,39 +94,24 @@ class GithubActionsExporterOperatorCharm(CharmBase):
         Args:
             event: Event triggering after config is changed.
         """
-        if self._is_configuration_valid():
-            container = self.unit.get_container("github-actions-exporter")
-            if container.can_connect():
-                logger.info("Configuration has changed")
-                self.model.unit.status = MaintenanceStatus("Configuring pod")
-                container.add_layer("github-actions-exporter", self._pebble_layer, combine=True)
-                container.replan()
-                self.ingress.update_config(self.ingress_config())
-                self.unit.status = ActiveStatus()
-            else:
-                event.defer()
-                self.unit.status = WaitingStatus("Waiting for pebble")
-        else:
-            self.model.unit.status = BlockedStatus("Configuration is not valid")
+        if not gh_exporter.is_configuration_valid(self._charm_state):
+            self.model.unit.status = ops.BlockedStatus("Configuration is not valid")
             event.defer()
             return
-
-    def _get_github_webhook_token(self) -> str:
-        """Return fake webhook token (to be improved).
-
-        Returns:
-            The token configured or fake one
-        """
-        cfg_token = self.model.config["github_webhook_token"]
-        if not cfg_token:
-            return "fake"
-        return cfg_token
+        container = self.unit.get_container(GITHUB_CONTAINER_NAME)
+        if not container.can_connect():
+            event.defer()
+            self.unit.status = ops.WaitingStatus("Waiting for pebble")
+            return
+        self.model.unit.status = ops.MaintenanceStatus("Configuring pod")
+        container.add_layer(GITHUB_CONTAINER_NAME, self._pebble_layer, combine=True)
+        container.replan()
+        self.unit.status = ops.ActiveStatus()
 
     @property
-    def _pebble_layer(self) -> Dict:
+    def _pebble_layer(self) -> ops.pebble.LayerDict:
         """Return a dictionary representing a Pebble layer."""
-        logger.info("using %s", self._get_github_webhook_token())
-        return {
+        layer = {
             "summary": "GitHub Actions Exporter layer",
             "description": "pebble config layer for GitHub Actions Exporter",
             "services": {
@@ -183,24 +119,17 @@ class GithubActionsExporterOperatorCharm(CharmBase):
                     "override": "replace",
                     "summary": "github-actions-exporter",
                     "startup": "enabled",
-                    "user": "gh_exporter",
-                    "command": "/usr/local/bin/github-actions-exporter",
-                    "environment": {
-                        "GITHUB_WEBHOOK_TOKEN": f"{self._get_github_webhook_token()}",
-                        "GITHUB_API_TOKEN": f"{self.model.config['github_api_token']}",
-                        "GITHUB_ORG": f"{self.model.config['github_org']}",
-                    },
+                    "user": GITHUB_USER,
+                    "command": gh_exporter.COMMAND_PATH,
+                    "environment": gh_exporter.environment(self._charm_state),
                 }
             },
             "checks": {
-                "github-actions-exporter-ready": {
-                    "override": "replace",
-                    "level": "ready",
-                    "tcp": {"port": GH_EXPORTER_PORT},
-                }
+                gh_exporter.CHECK_READY_NAME: gh_exporter.check_ready(),
             },
         }
+        return typing.cast(ops.pebble.LayerDict, layer)
 
 
 if __name__ == "__main__":  # pragma: nocover
-    main(GithubActionsExporterOperatorCharm)
+    main(GithubActionsExporterCharm)

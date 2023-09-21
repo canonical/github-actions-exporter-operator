@@ -1,11 +1,14 @@
-name: github-actions-exporter-operator
+# Copyright 2023 Canonical Ltd.
+# See LICENSE file for licensing details.
+name: github-actions-exporter
 display-name: GitHub Actions Exporter
 summary: GitHub Actions Exporter
-docs: https://discourse.charmhub.io/
+description: Collects metrics from GitHub Actions.
+docs: "https://github.com/canonical/github-actions-exporter-operator/"
+issues: https://github.com/canonical/github-actions-exporter-operator/issues
 maintainers:
   - launchpad.net/~canonical-is-devops
-issues: https://github.com/canonical/github-actions-exporter-operator/issues
-description: Collects metrics from GitHub Actions.
+source: https://github.com/canonical/github-actions-exporter-operator
 assumes:
   - k8s-api
 containers:
@@ -16,7 +19,6 @@ resources:
   github-actions-exporter-image:
     type: oci-image
     description: Docker image for GitHub Actions Exporter
-    auto-fetch: true
 
 provides:
   metrics-endpoint:
@@ -26,3 +28,7 @@ requires:
   ingress:
     interface: ingress
     limit: 1
+  nginx-route:
+    interface: nginx-route
+    limit: 1
+    optional: true

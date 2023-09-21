@@ -2,15 +2,18 @@
 # See LICENSE file for licensing details.
 
 """GitHub Actions Exporter charm unit tests."""
+# pylint: disable=protected-access
 
-import typing
 import unittest
+from secrets import token_hex
 from unittest.mock import MagicMock, patch
 
-from ops.model import ActiveStatus, BlockedStatus, Container, WaitingStatus
+import ops
 from ops.testing import Harness
 
-from charm import GithubActionsExporterOperatorCharm
+from charm import GithubActionsExporterCharm
+
+TEST_MODEL_NAME = "test-github-actions-exporter"
 
 
 class TestCharm(unittest.TestCase):
@@ -18,11 +21,12 @@ class TestCharm(unittest.TestCase):
 
     def setUp(self):
         """Set up test environment."""
-        self.harness = Harness(GithubActionsExporterOperatorCharm)
+        self.harness = Harness(GithubActionsExporterCharm)
         self.addCleanup(self.harness.cleanup)
+        self.harness.set_model_name(TEST_MODEL_NAME)
         self.harness.begin()
 
-    @patch.object(Container, "exec")
+    @patch.object(ops.Container, "exec")
     def test_config_changed(self, mock_container_exec):
         """
         arrange: charm created
@@ -32,18 +36,25 @@ class TestCharm(unittest.TestCase):
         mock_container_exec.return_value = MagicMock(
             wait_output=MagicMock(return_value=("", None))
         )
+        self.harness.disable_hooks()
+        self.harness._framework = ops.framework.Framework(
+            self.harness._storage, self.harness._charm_dir, self.harness._meta, self.harness._model
+        )
+        self.harness._charm = None
         self.harness.update_config({"github_webhook_token": "foo"})
+        self.harness.enable_hooks()
+        self.harness.begin_with_initial_hooks()
         self.harness.container_pebble_ready("github-actions-exporter")
         updated_plan = self.harness.get_container_pebble_plan("github-actions-exporter").to_dict()
         updated_plan_env = updated_plan["services"]["github-actions-exporter"]["environment"]
         self.assertEqual("foo", updated_plan_env["GITHUB_WEBHOOK_TOKEN"])
-        self.assertEqual(self.harness.model.unit.status, ActiveStatus())
+        self.assertEqual(self.harness.model.unit.status, ops.ActiveStatus())
         mock_container_exec.assert_any_call(
-            ["/usr/local/bin/github-actions-exporter", "--version"],
+            ["/srv/gh_exporter/github-actions-exporter", "--version"],
             user="gh_exporter",
         )
 
-    @patch.object(Container, "exec")
+    @patch.object(ops.Container, "exec")
     def test_config_changed_when_config_invalid(self, mock_container_exec):
         """
         arrange: charm created and relations established
@@ -53,10 +64,17 @@ class TestCharm(unittest.TestCase):
         mock_container_exec.return_value = MagicMock(
             wait_output=MagicMock(return_value=("", None))
         )
+        self.harness.disable_hooks()
+        self.harness._framework = ops.framework.Framework(
+            self.harness._storage, self.harness._charm_dir, self.harness._meta, self.harness._model
+        )
+        self.harness._charm = None
         self.harness.update_config({"github_webhook_token": ""})
+        self.harness.enable_hooks()
+        self.harness.begin_with_initial_hooks()
         self.assertEqual(
             self.harness.model.unit.status,
-            BlockedStatus("Configuration is not valid"),
+            ops.BlockedStatus("invalid configuration: github_webhook_token"),
         )
 
     def test_config_changed_when_pebble_not_ready(self):
@@ -66,9 +84,9 @@ class TestCharm(unittest.TestCase):
         assert: the charm is still in waiting status
         """
         self.harness.update_config({"github_webhook_token": "foo"})
-        self.assertEqual(self.harness.model.unit.status, WaitingStatus("Waiting for pebble"))
+        self.assertEqual(self.harness.model.unit.status, ops.WaitingStatus("Waiting for pebble"))
 
-    @patch.object(Container, "exec")
+    @patch.object(ops.Container, "exec")
     def test_default_config(self, mock_container_exec):
         """
         arrange: charm created
@@ -85,7 +103,47 @@ class TestCharm(unittest.TestCase):
         self.assertEqual("default", updated_plan_env["GITHUB_API_TOKEN"])
         self.assertEqual("default", updated_plan_env["GITHUB_ORG"])
 
-    @patch.object(Container, "exec")
+    @patch.object(ops.Container, "exec")
+    def test_valid_webhook_token(self, mock_container_exec):
+        """
+        arrange: charm created
+        act: set container as ready and change the configuration
+        assert: webhook token will be equal to the one that was set
+        """
+        mock_container_exec.return_value = MagicMock(
+            wait_output=MagicMock(return_value=("", None))
+        )
+        self.harness.container_pebble_ready("github-actions-exporter")
+        self.harness.disable_hooks()
+        self.harness._framework = ops.framework.Framework(
+            self.harness._storage, self.harness._charm_dir, self.harness._meta, self.harness._model
+        )
+        self.harness._charm = None
+        new_webhook_token = token_hex(16)
+        self.harness.update_config({"github_webhook_token": new_webhook_token})
+        self.harness.enable_hooks()
+        self.harness.begin_with_initial_hooks()
+        updated_plan = self.harness.get_container_pebble_plan("github-actions-exporter").to_dict()
+        updated_plan_env = updated_plan["services"]["github-actions-exporter"]["environment"]
+        self.assertEqual(new_webhook_token, updated_plan_env["GITHUB_WEBHOOK_TOKEN"])
+
+    @patch.object(ops.Container, "exec")
+    def test_empty_webhook_token(self, mock_container_exec):
+        """
+        arrange: charm created
+        act: set container as ready and change the configuration
+        assert: webhook token will be equal to the one that was set
+        """
+        mock_container_exec.return_value = MagicMock(
+            wait_output=MagicMock(return_value=("", None))
+        )
+        self.harness.container_pebble_ready("github-actions-exporter")
+        self.harness.update_config({"github_webhook_token": ""})
+        updated_plan = self.harness.get_container_pebble_plan("github-actions-exporter").to_dict()
+        updated_plan_env = updated_plan["services"]["github-actions-exporter"]["environment"]
+        self.assertEqual("default", updated_plan_env["GITHUB_WEBHOOK_TOKEN"])
+
+    @patch.object(ops.Container, "exec")
     def test_github_actions_exporter_pebble_ready(self, mock_container_exec):
         """
         arrange: charm created
@@ -100,49 +158,4 @@ class TestCharm(unittest.TestCase):
             "github-actions-exporter"
         )
         self.assertTrue(service.is_running())
-        self.assertEqual(self.harness.model.unit.status, ActiveStatus())
-
-    @patch.object(Container, "exec")
-    def test_ingress(self, mock_container_exec):
-        """
-        arrange: charm created
-        act: create a relation between github-actions-exporter-k8s and nginx ingress integrator,
-            and update the external-hostname configuration
-        assert: ingress relation data should be set up according to the configuration
-            and application name
-        """
-        ingress_relation_id = self.harness.add_relation("ingress", "ingress")
-        self.harness.add_relation_unit(ingress_relation_id, "ingress/0")
-        charm: GithubActionsExporterOperatorCharm = typing.cast(
-            GithubActionsExporterOperatorCharm, self.harness.charm
-        )
-        assert charm.ingress.config_dict == {
-            "host": "github-actions-exporter-operator",
-            "name": "github-actions-exporter-operator",
-            "port": 9101,
-            "service-hostname": charm.app.name,
-            "service-name": "github-actions-exporter-operator",
-            "service-namespace": None,
-            "service-port": 9101,
-        }
-        mock_container_exec.return_value = MagicMock(
-            wait_output=MagicMock(return_value=("", None))
-        )
-        self.harness.container_pebble_ready("github-actions-exporter")
-        self.harness.set_leader(
-            True
-        )  # this is needed otherwise the ingress will not update the config
-        self.harness.update_config({"external_hostname": "foo"})
-        assert charm.ingress.config_dict == {
-            "host": "foo",
-            "name": "github-actions-exporter-operator",
-            "port": 9101,
-            "service-hostname": "foo",
-            "service-name": "github-actions-exporter-operator",
-            "service-port": 9101,
-        }
-        self.assertEqual(self.harness.model.unit.status, ActiveStatus())
-        mock_container_exec.assert_any_call(
-            ["/usr/local/bin/github-actions-exporter", "--version"],
-            user="gh_exporter",
-        )
+        self.assertEqual(self.harness.model.unit.status, ops.ActiveStatus())
