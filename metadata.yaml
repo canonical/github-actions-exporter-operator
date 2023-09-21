@@ -7,7 +7,7 @@ description: Collects metrics from GitHub Actions.
 docs: "https://github.com/canonical/github-actions-exporter-operator/"
 issues: https://github.com/canonical/github-actions-exporter-operator/issues
 maintainers:
-  - launchpad.net/~canonical-is-devops
+  - https://launchpad.net/~canonical-is-devops
 source: https://github.com/canonical/github-actions-exporter-operator
 assumes:
   - k8s-api
