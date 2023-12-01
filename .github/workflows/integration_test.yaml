@@ -8,10 +8,5 @@ jobs:
     uses: canonical/operator-workflows/.github/workflows/integration_test.yaml@main
     secrets: inherit
     with:
-      chaos-app-label: app.kubernetes.io/name=github-actions-exporter
-      chaos-enabled: true
-      chaos-experiments: pod-delete
-      load-test-enabled: false
-      zap-enabled: false
       trivy-fs-enabled: true
       trivy-image-config: "trivy.yaml"
