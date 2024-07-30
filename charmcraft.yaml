@@ -10,6 +10,8 @@ bases:
       channel: "22.04"
 parts:
   charm:
+    charm-binary-python-packages:
+      - setuptools
     build-packages:
       - libffi-dev  # for cffi
       - libssl-dev  # for cryptography
