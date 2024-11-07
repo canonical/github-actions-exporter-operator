@@ -10,10 +10,8 @@ options:
     type: string
     description: |
       The GitHub API Access Token used to collect the Action Billing metrics.
-    default: "default"
   github_org:
     type: string
     description: |
       GitHub Organization from which the Action Billing metrics will be
       collected.
-    default: "default"
