@@ -27,6 +27,7 @@ def check_ready() -> Dict:
     check.override = "replace"
     check.level = "ready"
     check.tcp = {"port": GITHUB_METRICS_PORT}
+    check.threshold = 2
     # _CheckDict cannot be imported
     return check.to_dict()  # type: ignore
 
@@ -56,7 +57,7 @@ def is_configuration_valid(state: CharmState) -> bool:
     Returns:
         True if they are all set
     """
-    return all([state.github_webhook_token, state.github_api_token, state.github_org])
+    return state.github_webhook_token or all([state.github_api_token, state.github_org])
 
 
 def version(container: Container) -> str:
