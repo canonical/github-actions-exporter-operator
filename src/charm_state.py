@@ -37,8 +37,8 @@ class GithubActionsExporterConfig(BaseModel):  # pylint: disable=too-few-public-
         github_webhook_token: github_webhook_token config.
     """
 
-    github_api_token: str = Field(None, min_length=1)
-    github_org: str = Field(None, min_length=1)
+    github_api_token: str = Field(None)
+    github_org: str = Field(None)
     github_webhook_token: str = Field(..., min_length=1)
 
     class Config:  # pylint: disable=too-few-public-methods

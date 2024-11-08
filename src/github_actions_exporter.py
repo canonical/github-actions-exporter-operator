@@ -55,7 +55,8 @@ def is_configuration_valid(state: CharmState) -> bool:
         state: The state of the charm.
 
     Returns:
-        True if they are all set
+        True if all configs are set, github_webhook_token is set or
+            github_api_token and github_org are set.
     """
     return state.github_webhook_token or all([state.github_api_token, state.github_org])
 
