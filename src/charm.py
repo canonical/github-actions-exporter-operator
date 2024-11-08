@@ -117,6 +117,7 @@ class GithubActionsExporterCharm(CharmBase):
             "services": {
                 "github-actions-exporter": {
                     "override": "replace",
+                    "on-check-failure": {gh_exporter.CHECK_READY_NAME: "restart"},
                     "summary": "github-actions-exporter",
                     "startup": "enabled",
                     "user": GITHUB_USER,

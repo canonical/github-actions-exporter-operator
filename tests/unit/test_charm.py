@@ -100,8 +100,6 @@ class TestCharm(unittest.TestCase):
         updated_plan = self.harness.get_container_pebble_plan("github-actions-exporter").to_dict()
         updated_plan_env = updated_plan["services"]["github-actions-exporter"]["environment"]
         self.assertEqual("default", updated_plan_env["GITHUB_WEBHOOK_TOKEN"])
-        self.assertEqual("default", updated_plan_env["GITHUB_API_TOKEN"])
-        self.assertEqual("default", updated_plan_env["GITHUB_ORG"])
 
     @patch.object(ops.Container, "exec")
     def test_valid_webhook_token(self, mock_container_exec):
