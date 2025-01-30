@@ -1,2 +1,5 @@
 # pebble, false positive, https://github.com/canonical/pebble/issues/498
 CVE-2024-34156
+# golang
+CVE-2024-45338
+
