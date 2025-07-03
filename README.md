@@ -1,4 +1,4 @@
-# GitHub Actions Exporter Operator
+# GitHub actions exporter operator
 
 A Juju charm deploying and managing GitHub Actions Exporter on Kubernetes. [GitHub Actions Exporter](https://github.com/cpanato/github_actions_exporter) is an
 open-source Prometheus exporter that exposes GitHub Actions metrics.
